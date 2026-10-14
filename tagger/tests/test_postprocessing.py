@@ -65,4 +65,5 @@ def test_build_result_serializes_to_protocol_shape():
         "model": "wd-test",
         "rating": {"general": 0.8, "sensitive": 0.15, "questionable": 0.04, "explicit": 0.01},
         "tags": [{"name": "1girl", "category": "general", "confidence": 0.97}],
+        "embedding": None,
     }

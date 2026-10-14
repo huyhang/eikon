@@ -1,6 +1,12 @@
 import pytest
 
-from eikon_tagger.settings import DEFAULT_MODEL_REPO, Settings, model_name_from_repo, settings_from_env
+from eikon_tagger.settings import (
+    DEFAULT_EMBED_REPO,
+    DEFAULT_MODEL_REPO,
+    Settings,
+    model_name_from_repo,
+    settings_from_env,
+)
 
 
 def test_defaults_when_env_is_empty():
@@ -20,6 +26,14 @@ def test_defaults_when_env_is_empty():
         ({"TAGGER_HOST": "127.0.0.1"}, "host", "127.0.0.1"),
         ({"TAGGER_PORT": "9000"}, "port", 9000),
         ({"TAGGER_MODEL_REPO": ""}, "model_repo", DEFAULT_MODEL_REPO),
+        ({}, "embed_repo", DEFAULT_EMBED_REPO),
+        ({"TAGGER_EMBED_REPO": "Xenova/clip-vit-base-patch16"}, "embed_repo", "Xenova/clip-vit-base-patch16"),
+        ({"TAGGER_EMBED_REPO": "off"}, "embed_repo", None),
+        ({"TAGGER_EMBED_REPO": "OFF"}, "embed_repo", None),
+        ({"TAGGER_EMBED_PRECISION": "fp16"}, "embed_precision", "fp16"),
+        ({"TAGGER_MAX_BATCH": "32"}, "max_batch", 32),
+        ({"TAGGER_BATCH_WAIT_MS": "0"}, "batch_wait_ms", 0),
+        ({"TAGGER_BATCH_WAIT_MS": "20"}, "batch_wait_ms", 20),
     ],
 )
 def test_reads_each_variable(env, field, expected):
@@ -35,6 +49,10 @@ def test_reads_each_variable(env, field, expected):
         {"TAGGER_MAX_BODY_BYTES": "0"},
         {"TAGGER_PORT": "-1"},
         {"TAGGER_DEVICE": "tpu"},
+        {"TAGGER_EMBED_PRECISION": "int8"},
+        {"TAGGER_MAX_BATCH": "0"},
+        {"TAGGER_MAX_BATCH": "many"},
+        {"TAGGER_BATCH_WAIT_MS": "-1"},
     ],
 )
 def test_rejects_invalid_values(env):

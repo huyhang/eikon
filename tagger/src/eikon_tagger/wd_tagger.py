@@ -1,6 +1,5 @@
-"""WD v3 tagger composed from injectable parts: model loader, preprocessor and inference session."""
+"""WD v3 tagger composed from injectable parts: model loader, preprocessor, session and batcher."""
 
-import threading
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Protocol
@@ -8,6 +7,7 @@ from typing import Protocol
 import numpy as np
 from PIL import Image
 
+from .batching import Batcher, BatcherFactory, unbatched
 from .labels import Label
 from .postprocessing import build_result
 from .preprocessing import preprocess
@@ -23,7 +23,7 @@ class InferenceSession(Protocol):
     def device(self) -> str: ...
 
     def run(self, batch: np.ndarray) -> np.ndarray:
-        """Runs a (1, H, W, 3) batch and returns the 1-D probability vector."""
+        """Runs an (N, H, W, 3) batch and returns N probability rows."""
 
 
 @dataclass(frozen=True)
@@ -47,14 +47,15 @@ class WdTagger:
         loader: ModelLoader,
         min_confidence: float,
         preprocessor: Preprocessor = preprocess,
+        batcher_factory: BatcherFactory = unbatched,
     ) -> None:
         self._model_name = model_name
         self._loader = loader
         self._min_confidence = min_confidence
         self._preprocess = preprocessor
+        self._batcher_factory = batcher_factory
         self._model: LoadedModel | None = None
-        # One inference at a time keeps GPU memory flat; preprocessing still runs in parallel.
-        self._inference_lock = threading.Lock()
+        self._batcher: Batcher | None = None
 
     @property
     def model_name(self) -> str:
@@ -66,15 +67,19 @@ class WdTagger:
 
     def load(self) -> None:
         self._model = self._loader()
+        # Concurrent requests share batched session calls; preprocessing still runs in each caller's thread.
+        self._batcher = self._batcher_factory(self._model.session.run)
 
     def tag(self, image: Image.Image) -> TagResult:
-        model = self._require_model()
-        batch = self._preprocess(image, model.session.input_size)
-        with self._inference_lock:
-            probs = model.session.run(batch)
+        model, batcher = self._require_loaded()
+        probs = batcher.submit(self._preprocess(image, model.session.input_size))
         return build_result(self._model_name, model.labels, probs.tolist(), self._min_confidence)
 
-    def _require_model(self) -> LoadedModel:
-        if self._model is None:
+    def close(self) -> None:
+        if self._batcher:
+            self._batcher.close()
+
+    def _require_loaded(self) -> tuple[LoadedModel, Batcher]:
+        if self._model is None or self._batcher is None:
             raise ModelNotLoadedError("model has not been loaded")
-        return self._model
+        return self._model, self._batcher
