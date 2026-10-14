@@ -7,7 +7,8 @@ export const FILMSTRIP_REACH = 20;
 
 /** Keeps the current thumbnail centred: React calls it whenever the ref moves to a new button. */
 function centre(button: HTMLButtonElement | null) {
-  button?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  button?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: still ? 'auto' : 'smooth' });
 }
 
 /** The slice of tiles the strip renders around the current index. */

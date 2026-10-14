@@ -74,6 +74,16 @@
   color: var(--text-2);
 }
 
+/* The focus ring follows the rounded row rather than the bare input inside it. */
+.addRow:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.addRow input:focus-visible {
+  outline: none;
+}
+
 .pending {
   display: flex;
   align-items: center;

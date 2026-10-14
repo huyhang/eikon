@@ -11,6 +11,7 @@ interface SectionProps {
   flush?: boolean;
 }
 
+/** A titled block; with `seeAll` the title (with its chevron) links to the full list, as in Photos. */
 export function Section({ title, seeAll, action, children, flush }: SectionProps) {
   return (
     <section className={styles.section}>
@@ -23,12 +24,7 @@ export function Section({ title, seeAll, action, children, flush }: SectionProps
         ) : (
           <h2>{title}</h2>
         )}
-        {action ??
-          (seeAll && (
-            <Link to={seeAll} className={styles.seeAll}>
-              See All
-            </Link>
-          ))}
+        {action}
       </header>
       <div className={flush ? undefined : styles.padded}>{children}</div>
     </section>

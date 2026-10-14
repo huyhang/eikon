@@ -26,11 +26,6 @@
   color: var(--text-3);
 }
 
-.seeAll {
-  color: var(--accent);
-  font-size: 15px;
-}
-
 .padded {
   padding: 0 var(--gutter);
 }

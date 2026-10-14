@@ -15,7 +15,8 @@
 
 .item {
   flex: none;
-  height: clamp(220px, 34vw, 380px);
+  /* Phones get a shorter strip so the sections below show on the first screen. */
+  height: clamp(160px, 34vw, 380px);
   border-radius: var(--radius-lg);
   overflow: hidden;
   scroll-snap-align: start;
