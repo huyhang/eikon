@@ -2,16 +2,34 @@ import type { Rating } from '@eikon/shared';
 import { isRating } from '@eikon/shared';
 import { DEFAULT_SAFE_MODE, type SafeModePrefs } from '../core/safeMode';
 import { clampDensity } from '../core/gestures';
+import { isSlideshowSeconds, type SlideshowSeconds } from '../core/slideshow';
 import { isSearchState, searchKey, type SearchState } from '../core/searchState';
 import type { KeyValueStore } from './keyValueStore';
 
 export type ThemePref = 'dark' | 'light' | 'system';
+
+export interface SlideshowPrefs {
+  seconds: SlideshowSeconds;
+  shuffle: boolean;
+}
 
 export interface Prefs {
   theme: ThemePref;
   safeMode: SafeModePrefs;
   density: number | null;
   recentSearches: SearchState[];
+  slideshow: SlideshowPrefs;
+  /** On wide screens, show the viewer beside the grid instead of over it. */
+  viewerSplit: boolean;
+}
+
+export const DEFAULT_SLIDESHOW: SlideshowPrefs = { seconds: 10, shuffle: false };
+
+function readSlideshow(raw: Partial<SlideshowPrefs> | null): SlideshowPrefs {
+  return {
+    seconds: isSlideshowSeconds(raw?.seconds) ? raw.seconds : DEFAULT_SLIDESHOW.seconds,
+    shuffle: raw?.shuffle === true,
+  };
 }
 
 const THEMES: readonly ThemePref[] = ['dark', 'light', 'system'];
@@ -37,6 +55,8 @@ export function loadPrefs(store: KeyValueStore): Prefs {
     safeMode: readSafeMode(store.get<Partial<SafeModePrefs> | null>('safeMode', null)),
     density: typeof density === 'number' ? clampDensity(density) : null,
     recentSearches: readRecentSearches(store.get<unknown>('recentSearches', [])),
+    slideshow: readSlideshow(store.get<Partial<SlideshowPrefs> | null>('slideshow', null)),
+    viewerSplit: store.get<unknown>('viewerSplit', false) === true,
   };
 }
 
@@ -45,6 +65,8 @@ export function savePrefs(store: KeyValueStore, prefs: Prefs): void {
   store.set('safeMode', prefs.safeMode);
   store.set('density', prefs.density);
   store.set('recentSearches', prefs.recentSearches);
+  store.set('slideshow', prefs.slideshow);
+  store.set('viewerSplit', prefs.viewerSplit);
 }
 
 /** Most recent first, deduped by criteria, capped. Returns the same list when nothing changes. */

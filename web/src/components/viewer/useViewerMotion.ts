@@ -3,6 +3,7 @@ import { animate, useMotionValue } from 'motion/react';
 import type { ImageTile } from '@eikon/shared';
 import { flipToTarget, type Rect } from '../../core/geometry';
 import { findTileElement } from '../grid/tileKey';
+import type { Insets } from '../../core/viewerLayout';
 import { boxFor } from './ViewerImage';
 
 export const SPRING = { type: 'spring', stiffness: 320, damping: 34, mass: 0.9 } as const;
@@ -25,15 +26,26 @@ interface MotionOptions {
   tile: ImageTile | undefined;
   contextKey: string;
   stage: Stage;
+  insets: Insets;
   padding: number;
   reduceMotion: boolean;
+  /** Grow out of (and back into) the grid thumbnail; off in split view, where the grid stays put. */
+  flip: boolean;
 }
 
 /**
  * Motion values for the viewer: the horizontal slide track, the open/close "flip" from the grid
  * thumbnail, and the backdrop. All animation lives here so the component stays declarative.
  */
-export function useViewerMotion({ tile, contextKey, stage, padding, reduceMotion }: MotionOptions) {
+export function useViewerMotion({
+  tile,
+  contextKey,
+  stage,
+  insets,
+  padding,
+  reduceMotion,
+  flip,
+}: MotionOptions) {
   const trackX = useMotionValue(0);
   const flipX = useMotionValue(0);
   const flipY = useMotionValue(0);
@@ -43,15 +55,15 @@ export function useViewerMotion({ tile, contextKey, stage, padding, reduceMotion
   const flipTo = useCallback(
     (target: Rect) => {
       if (!tile) return { x: 0, y: 0, scale: 1 };
-      return flipToTarget(target, boxFor(tile, stage, padding), { x: 0, y: 0, ...stage });
+      return flipToTarget(target, boxFor(tile, stage, insets, padding), { x: 0, y: 0, ...stage });
     },
-    [tile, stage, padding],
+    [tile, stage, insets, padding],
   );
 
   // Expand from the grid thumbnail, once, on mount.
   const expandFromGrid = useEffectEvent(() => {
     if (!tile) return;
-    const target = reduceMotion ? null : visibleTileRect(contextKey, tile.id);
+    const target = reduceMotion || !flip ? null : visibleTileRect(contextKey, tile.id);
     if (target) {
       const t = flipTo(target);
       flipX.set(t.x);
@@ -78,7 +90,7 @@ export function useViewerMotion({ tile, contextKey, stage, padding, reduceMotion
   /** Shrinks back into the grid thumbnail (or fades out when it isn't visible). */
   const animateClose = useCallback(
     async (zoomed: boolean) => {
-      const target = zoomed || reduceMotion || !tile ? null : visibleTileRect(contextKey, tile.id);
+      const target = zoomed || reduceMotion || !flip || !tile ? null : visibleTileRect(contextKey, tile.id);
       if (target) {
         const t = flipTo(target);
         await Promise.all([
@@ -94,7 +106,7 @@ export function useViewerMotion({ tile, contextKey, stage, padding, reduceMotion
         ]);
       }
     },
-    [tile, contextKey, reduceMotion, flipTo, flipX, flipY, flipScale, backdrop],
+    [tile, contextKey, reduceMotion, flip, flipTo, flipX, flipY, flipScale, backdrop],
   );
 
   /** Slides the track one page left or right. */

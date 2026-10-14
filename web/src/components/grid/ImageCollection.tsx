@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import type { ImageTile } from '@eikon/shared';
 import { usePrefs } from '../../context/Prefs';
@@ -8,6 +8,7 @@ import type { PressModifiers } from '../../hooks/useLongPress';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { clampDensity, defaultDensity } from '../../core/gestures';
 import { EMPTY_SEARCH, searchFromParams, searchReducer, searchToParams } from '../../core/searchState';
+import { Slideshow } from '../viewer/Slideshow';
 import { Viewer } from '../viewer/Viewer';
 import { ImageStrip } from './ImageStrip';
 import { JustifiedGrid, type JustifiedGridHandle } from './JustifiedGrid';
@@ -40,13 +41,19 @@ export function ImageCollection({
   const { density, setDensity } = usePrefs();
   const level = density ?? defaultDensity(window.innerWidth);
   const viewer = useViewerState(contextKey, primary);
+  const openIndex = viewer.openId === null ? -1 : tiles.findIndex((t) => t.id === viewer.openId);
   const navigate = useNavigate();
   const location = useLocation();
   const capabilities = useCapabilities();
 
-  const openIndex = viewer.openId === null ? -1 : tiles.findIndex((t) => t.id === viewer.openId);
-
-  const onOpen = useCallback((index: number) => viewer.open(tiles[index]!.id), [viewer, tiles]);
+  // The slideshow replaces the viewer while it runs; Back (which closes the viewer) ends it too.
+  const [slideshowFrom, setSlideshowFrom] = useState<number | null>(null);
+  if (slideshowFrom !== null && openIndex < 0) setSlideshowFrom(null);
+  // With the viewer already open (split view), a tap swaps the picture instead of stacking history.
+  const onOpen = useCallback(
+    (index: number) => (openIndex >= 0 ? viewer.show(tiles[index]!.id) : viewer.open(tiles[index]!.id)),
+    [viewer, tiles, openIndex],
+  );
   const selection = useSelection();
   const selectable = variant === 'grid' && maxRows === undefined;
   const selecting =
@@ -111,7 +118,7 @@ export function ImageCollection({
           maxRows={maxRows}
         />
       )}
-      {openIndex >= 0 && (
+      {openIndex >= 0 && slideshowFrom === null && (
         <Viewer
           tiles={tiles}
           initialIndex={openIndex}
@@ -121,6 +128,18 @@ export function ImageCollection({
           onSearch={onSearch}
           onAddToSearch={onAddToSearch}
           onFindSimilar={capabilities.similar ? onFindSimilar : undefined}
+          onPlay={setSlideshowFrom}
+        />
+      )}
+      {openIndex >= 0 && slideshowFrom !== null && (
+        <Slideshow
+          tiles={tiles}
+          startIndex={slideshowFrom}
+          onExit={(index) => {
+            setSlideshowFrom(null);
+            viewer.show(tiles[index]!.id);
+            gridRef.current?.revealItem(index);
+          }}
         />
       )}
     </div>

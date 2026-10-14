@@ -184,3 +184,8 @@ img {
     scroll-behavior: auto !important;
   }
 }
+
+/* Split view: the page shrinks to the left of the viewer panel (set by the viewer while open). */
+html[data-viewer-split='true'] body {
+  padding-right: var(--viewer-split-width, 60vw);
+}

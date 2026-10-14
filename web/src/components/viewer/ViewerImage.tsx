@@ -2,13 +2,17 @@ import { useState } from 'react';
 import clsx from 'clsx';
 import { TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch';
 import { originalUrl, thumbUrl, type ImageTile } from '@eikon/shared';
-import { fitRect, type Rect } from '../../core/geometry';
+import type { Rect } from '../../core/geometry';
+import { pictureBox, type Insets } from '../../core/viewerLayout';
 import styles from './Viewer.module.css';
 
 interface ViewerImageProps {
   tile: ImageTile;
   stage: { width: number; height: number };
+  insets: Insets;
   padding: number;
+  /** Describes the picture for screen readers (empty for neighbouring slides). */
+  alt: string;
   /** Only the current slide is zoomable. */
   active: boolean;
   /** Animated originals are shown directly since thumbnails are a still frame. */
@@ -16,21 +20,22 @@ interface ViewerImageProps {
   onZoomChange?: (zoomed: boolean) => void;
 }
 
-export function boxFor(tile: ImageTile, stage: { width: number; height: number }, padding: number): Rect {
-  return fitRect(
-    { x: 0, y: 0, width: stage.width, height: stage.height },
-    tile.width / Math.max(1, tile.height),
-    padding,
-  );
+export function boxFor(
+  tile: ImageTile,
+  stage: { width: number; height: number },
+  insets: Insets,
+  padding: number,
+): Rect {
+  return pictureBox(tile.width / Math.max(1, tile.height), stage, insets, padding);
 }
 
 /** Thumbnail → large → original, each layer fading in over the previous one once loaded. */
-function ImageLayers({ tile, box, hiRes }: { tile: ImageTile; box: Rect; hiRes: boolean }) {
+function ImageLayers({ tile, box, hiRes, alt }: { tile: ImageTile; box: Rect; hiRes: boolean; alt: string }) {
   const [largeLoaded, setLargeLoaded] = useState(false);
   const [originalLoaded, setOriginalLoaded] = useState(false);
   return (
     <div className={styles.box} style={{ left: box.x, top: box.y, width: box.width, height: box.height }}>
-      <img className={styles.layer} src={thumbUrl(tile.id, 'sm')} alt="" draggable={false} />
+      <img className={styles.layer} src={thumbUrl(tile.id, 'sm')} alt={alt} draggable={false} />
       <img
         className={clsx(styles.layer, styles.fade, largeLoaded && styles.shown)}
         src={thumbUrl(tile.id, 'lg')}
@@ -51,11 +56,20 @@ function ImageLayers({ tile, box, hiRes }: { tile: ImageTile; box: Rect; hiRes: 
   );
 }
 
-export function ViewerImage({ tile, stage, padding, active, animated, onZoomChange }: ViewerImageProps) {
+export function ViewerImage({
+  tile,
+  stage,
+  insets,
+  padding,
+  alt,
+  active,
+  animated,
+  onZoomChange,
+}: ViewerImageProps) {
   const [zoomed, setZoomed] = useState(false);
   const [hiRes, setHiRes] = useState(false);
-  const box = boxFor(tile, stage, padding);
-  const layers = <ImageLayers tile={tile} box={box} hiRes={hiRes || (active && animated)} />;
+  const box = boxFor(tile, stage, insets, padding);
+  const layers = <ImageLayers tile={tile} box={box} hiRes={hiRes || (active && animated)} alt={alt} />;
 
   if (!active) return <div className={styles.slideFill}>{layers}</div>;
 

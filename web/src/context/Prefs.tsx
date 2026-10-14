@@ -2,7 +2,14 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import type { Rating } from '@eikon/shared';
 import { maxRatingFor, type SafeModePrefs } from '../core/safeMode';
 import type { SearchState } from '../core/searchState';
-import { loadPrefs, pushRecentSearch, savePrefs, type Prefs, type ThemePref } from '../services/prefs';
+import {
+  loadPrefs,
+  pushRecentSearch,
+  savePrefs,
+  type Prefs,
+  type SlideshowPrefs,
+  type ThemePref,
+} from '../services/prefs';
 import { useDependencies } from './Dependencies';
 
 interface PrefsActions {
@@ -11,6 +18,8 @@ interface PrefsActions {
   setDensity(density: number): void;
   addRecentSearch(search: SearchState): void;
   clearRecentSearches(): void;
+  setSlideshow(patch: Partial<SlideshowPrefs>): void;
+  setViewerSplit(split: boolean): void;
 }
 
 interface PrefsContextValue extends Prefs, PrefsActions {
@@ -55,6 +64,8 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
           return recentSearches === p.recentSearches ? p : { ...p, recentSearches };
         }),
       clearRecentSearches: () => update({ recentSearches: [] }),
+      setSlideshow: (patch) => setPrefs((p) => ({ ...p, slideshow: { ...p.slideshow, ...patch } })),
+      setViewerSplit: (viewerSplit) => update({ viewerSplit }),
     };
   }, []);
 

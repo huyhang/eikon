@@ -46,11 +46,16 @@ export function TopBar({
   position,
   total,
   onClose,
+  split,
+  onToggleSplit,
 }: {
   opacity: MotionValue<number>;
   position: number;
   total: number;
   onClose: () => void;
+  split: boolean;
+  /** Absent where split view isn't available (narrow screens). */
+  onToggleSplit?: () => void;
 }) {
   return (
     <motion.header className={styles.topBar} style={{ opacity }}>
@@ -60,7 +65,20 @@ export function TopBar({
       <span className={styles.counter}>
         {formatCount(position)} of {formatCount(total)}
       </span>
-      <span className={styles.topSpacer} />
+      {onToggleSplit ? (
+        <button
+          type="button"
+          className={clsx(styles.roundButton, split && styles.roundActive)}
+          onClick={onToggleSplit}
+          aria-label={split ? 'Full screen viewer' : 'Show the grid beside the viewer'}
+          aria-pressed={split}
+          title={split ? 'Full screen' : 'Split view'}
+        >
+          <Icon name="split" size={18} />
+        </button>
+      ) : (
+        <span className={styles.topSpacer} />
+      )}
     </motion.header>
   );
 }
@@ -76,6 +94,7 @@ export interface ToolbarProps {
   onToggleInfo: () => void;
   onEdit: () => void;
   onFindSimilar?: () => void;
+  onPlay?: () => void;
 }
 
 export function Toolbar(props: ToolbarProps) {
@@ -94,6 +113,7 @@ export function Toolbar(props: ToolbarProps) {
       {props.onFindSimilar && (
         <ToolbarButton icon="similar" label="More like this" onClick={props.onFindSimilar} />
       )}
+      {props.onPlay && <ToolbarButton icon="play" label="Slideshow" onClick={props.onPlay} />}
     </motion.nav>
   );
 }
@@ -105,7 +125,7 @@ function ToolbarButton({
   active,
   disabled,
 }: {
-  icon: 'share' | 'heart' | 'info' | 'pencil' | 'similar';
+  icon: 'share' | 'heart' | 'info' | 'pencil' | 'similar' | 'play';
   label: string;
   onClick: () => void;
   active?: boolean;

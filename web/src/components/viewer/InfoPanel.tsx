@@ -3,6 +3,7 @@ import { motion, type PanInfo } from 'motion/react';
 import { RATINGS, thumbUrl, type ImageDetail, type Rating } from '@eikon/shared';
 import { useSetRating, useSimilarImages } from '../../api/hooks';
 import { formatBytes, formatDate, formatDimensions } from '../../core/format';
+import { INFO_PANEL_WIDTH } from '../../core/viewerLayout';
 import { RATING_LABELS } from '../../core/safeMode';
 import { Spinner } from '../common/Controls';
 import { Icon } from '../common/Icon';
@@ -20,11 +21,11 @@ interface InfoPanelProps {
   onAddToSearch: (tag: string) => void;
   /** Shows a "More like this" strip when similar-image search is available. */
   similar: boolean;
+  /** Height of the phone sheet; the picture moves into the space above it. */
+  sheetHeight?: number;
 }
 
-export const INFO_PANEL_WIDTH = 380;
-
-export function InfoPanel({ detail, wide, onClose, ...tagProps }: InfoPanelProps) {
+export function InfoPanel({ detail, wide, onClose, sheetHeight, ...tagProps }: InfoPanelProps) {
   const content = detail ? (
     <InfoContent detail={detail} {...tagProps} />
   ) : (
@@ -62,6 +63,7 @@ export function InfoPanel({ detail, wide, onClose, ...tagProps }: InfoPanelProps
   return (
     <motion.aside
       className={styles.sheet}
+      style={sheetHeight ? { height: sheetHeight } : undefined}
       initial={{ y: '100%' }}
       animate={{ y: 0 }}
       exit={{ y: '100%' }}

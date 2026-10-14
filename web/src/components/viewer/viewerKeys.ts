@@ -1,5 +1,14 @@
 export type ViewerKeyAction =
-  'stopEditing' | 'closeInfo' | 'close' | 'next' | 'prev' | 'toggleInfo' | 'toggleFavorite' | 'edit' | null;
+  | 'stopEditing'
+  | 'closeInfo'
+  | 'close'
+  | 'next'
+  | 'prev'
+  | 'toggleInfo'
+  | 'toggleFavorite'
+  | 'edit'
+  | 'play'
+  | null;
 
 export interface ViewerKeyState {
   editing: boolean;
@@ -37,6 +46,8 @@ export function viewerKeyAction(press: ViewerKeyPress, state: ViewerKeyState): V
       return 'toggleFavorite';
     case 'e':
       return 'edit';
+    case 'p':
+      return 'play';
     default:
       return null;
   }

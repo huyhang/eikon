@@ -14,6 +14,7 @@ describe('viewerKeyAction', () => {
     ['i', closed, 'toggleInfo'],
     ['f', closed, 'toggleFavorite'],
     ['e', closed, 'edit'],
+    ['p', closed, 'play'],
     ['x', closed, null],
   ])('%s with %j → %s', (key, state, expected) => {
     expect(viewerKeyAction({ key }, state)).toBe(expected);
