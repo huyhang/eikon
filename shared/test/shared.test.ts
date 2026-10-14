@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   decodeTile,
+  decodeVector,
+  encodeVector,
+  normalize,
   encodeTile,
   imageQueryToSearchParams,
   normalizeTagName,
@@ -101,5 +104,37 @@ describe('tag names', () => {
 
   it('displayTagName swaps underscores for spaces', () => {
     expect(displayTagName('blue_sky')).toBe('blue sky');
+  });
+});
+
+describe('vectors', () => {
+  it.each([
+    { name: 'unit basis', values: [1, 0, 0, 0] },
+    { name: 'mixed signs', values: [0.5, -0.25, 0.125, -1] },
+    { name: 'empty', values: [] },
+  ])('round-trips $name through base64 float16', ({ values }) => {
+    expect(Array.from(decodeVector(encodeVector(values)))).toEqual(values);
+  });
+
+  it('stores two little-endian bytes per value', () => {
+    // 1.0 in float16 is 0x3C00 → bytes [0x00, 0x3C]
+    expect(atob(encodeVector([1]))).toBe(String.fromCharCode(0x00, 0x3c));
+  });
+
+  it('rounds to float16 precision', () => {
+    const [value] = decodeVector(encodeVector([0.1]));
+    expect(value).toBeCloseTo(0.1, 3);
+    expect(value).not.toBe(0.1);
+  });
+
+  it.each([
+    { values: [3, 4], expected: [0.6, 0.8] },
+    { values: [0, 0], expected: [0, 0] },
+  ])('normalize($values) → $expected', ({ values, expected }) => {
+    expect(Array.from(normalize(values))).toEqual(expected.map((v) => Math.fround(v)));
+  });
+
+  it('rejects an odd number of bytes', () => {
+    expect(() => decodeVector(btoa('abc'))).toThrow(/odd/);
   });
 });

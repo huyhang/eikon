@@ -2,6 +2,8 @@ import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
 import { createFakeTaggerApp, type FakeTaggerOptions } from '../src/app';
 import { colorTagsFor, colorThemeTag } from '../src/colorTags';
+import { decodeVector } from '@eikon/shared';
+import { embedWords, fakeImageEmbedding, fakeTextEmbedding, wordsOf } from '../src/fakeEmbedding';
 import { fakeConfidence, fakeRating, fakeTagResult, sample, seededRandom } from '../src/fakeTagging';
 
 function app(overrides: Partial<FakeTaggerOptions> = {}) {
@@ -13,6 +15,7 @@ function app(overrides: Partial<FakeTaggerOptions> = {}) {
     sleep: async () => {},
     analyze: async () => [],
     maxBodyBytes: 1024,
+    embeddings: true,
     ...overrides,
   });
 }
@@ -101,6 +104,7 @@ describe('fake tagger HTTP', () => {
       status: 'ok',
       model: 'fake-wd-tagger',
       device: 'fake-cpu',
+      embedModel: 'fake-clip',
     });
   });
 
@@ -130,5 +134,91 @@ describe('fake tagger HTTP', () => {
 
   it('rejects oversized bodies', async () => {
     expect((await tag(app(), {}, 'x'.repeat(2048))).statusCode).toBe(413);
+  });
+});
+
+const dot = (a: Float32Array, b: Float32Array) => a.reduce((sum, v, i) => sum + v * b[i]!, 0);
+
+describe('fake embeddings', () => {
+  it.each([
+    ['Full moon over the mountains', ['full', 'moon', 'over', 'the', 'mountain']],
+    ['glasses', ['glass']],
+    ['cherries and cats', ['cherry', 'and', 'cat']],
+    ['a cat', ['cat']],
+  ])('wordsOf(%j) → %j', (text, expected) => {
+    expect(wordsOf(text)).toEqual(expected);
+  });
+
+  it('places text near images whose tags share its words', () => {
+    const moon = decodeVector(
+      fakeImageEmbedding([
+        { name: 'full_moon', category: 'general', confidence: 0.9 },
+        { name: 'mountain', category: 'general', confidence: 0.8 },
+      ]).vector,
+    );
+    const cat = decodeVector(
+      fakeImageEmbedding([{ name: 'cat', category: 'general', confidence: 0.9 }]).vector,
+    );
+    const query = decodeVector(fakeTextEmbedding('full moon over mountains').vector);
+    expect(dot(query, moon)).toBeGreaterThan(0.7);
+    expect(dot(query, moon)).toBeGreaterThan(dot(query, cat) + 0.3);
+  });
+
+  it('returns unit vectors (zero for no words)', () => {
+    const v = embedWords([{ word: 'sky', weight: 2 }]);
+    expect(dot(v, v)).toBeCloseTo(1, 5);
+    expect(Array.from(embedWords([])).every((x) => x === 0)).toBe(true);
+  });
+});
+
+const embedText = (a: ReturnType<typeof app>, payload: unknown) =>
+  a.inject({ method: 'POST', url: '/v1/embed-text', payload: payload as object });
+
+describe('embedding endpoints', () => {
+  it.each([
+    { embeddings: true, embedModel: 'fake-clip' },
+    { embeddings: false, embedModel: null },
+  ])('health reports embedModel $embedModel', async ({ embeddings, embedModel }) => {
+    expect((await app({ embeddings }).inject('/health')).json()).toMatchObject({ embedModel });
+  });
+
+  it.each([
+    { embeddings: true, hasEmbedding: true },
+    { embeddings: false, hasEmbedding: false },
+  ])('/v1/tag includes an embedding: $hasEmbedding', async ({ embeddings, hasEmbedding }) => {
+    const body = (await tag(app({ embeddings }))).json();
+    expect(body.embedding !== null).toBe(hasEmbedding);
+  });
+
+  it.each([
+    { payload: { text: 'blue sky' }, status: 200 },
+    { payload: { text: '   ' }, status: 400 },
+    { payload: { text: 'x'.repeat(501) }, status: 400 },
+    { payload: { nope: true }, status: 400 },
+  ])('/v1/embed-text %j → $status', async ({ payload, status }) => {
+    expect((await embedText(app(), payload)).statusCode).toBe(status);
+  });
+
+  it.each([
+    { url: '/v1/embed-text', payload: { text: 'sky' } },
+    { url: '/v1/embed-image', payload: 'png' },
+  ])('$url answers 404 when embeddings are off', async ({ url, payload }) => {
+    const headers = typeof payload === 'string' ? { 'content-type': 'image/png' } : {};
+    const res = await app({ embeddings: false }).inject({ method: 'POST', url, headers, payload });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('embeds an image the same way /v1/tag does', async () => {
+    const a = app();
+    const fromTag = (await tag(a)).json().embedding;
+    const fromEmbed = (
+      await a.inject({
+        method: 'POST',
+        url: '/v1/embed-image',
+        headers: { 'content-type': 'image/png' },
+        payload: 'png-bytes',
+      })
+    ).json();
+    expect(fromEmbed).toEqual(fromTag);
   });
 });

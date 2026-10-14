@@ -13,6 +13,7 @@ const app = createFakeTaggerApp({
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   analyze: colorTagsFor,
   maxBodyBytes: 50 * 1024 * 1024,
+  embeddings: env.FAKE_TAGGER_EMBEDDINGS !== 'off',
 });
 
 await app.listen({ host, port });
