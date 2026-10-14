@@ -1,4 +1,5 @@
 import { isRating, ratingFromLevel, ratingLevel, type Rating } from './rating';
+import { MAX_EMBED_TEXT_LENGTH } from './tagger';
 import { normalizeTagName, type TagCategory } from './tags';
 
 export type GroupKind = 'illustrator' | 'collection';
@@ -47,6 +48,15 @@ export interface ImageQuery {
   limit?: number;
   /** Safe mode: hide images rated above this level (and images not yet rated). */
   maxRating?: Rating;
+  /** Rank by similarity to this image ("more like this"); other criteria only filter. */
+  like?: number;
+  /** Rank by how well images match this description; other criteria only filter. */
+  text?: string;
+}
+
+/** Whether a query ranks by similarity rather than sorting. */
+export function isRankedQuery(query: ImageQuery): boolean {
+  return query.like !== undefined || query.text !== undefined;
 }
 
 export function imageQueryToSearchParams(query: ImageQuery): URLSearchParams {
@@ -59,6 +69,8 @@ export function imageQueryToSearchParams(query: ImageQuery): URLSearchParams {
   if (query.seed !== undefined) params.set('seed', String(query.seed));
   if (query.limit !== undefined) params.set('limit', String(query.limit));
   if (query.maxRating) params.set('maxRating', query.maxRating);
+  if (query.like !== undefined) params.set('like', String(query.like));
+  if (query.text !== undefined) params.set('q', query.text);
   return params;
 }
 
@@ -97,6 +109,10 @@ export function parseImageQuery(raw: RawParams): ImageQuery {
   if (limit !== undefined) query.limit = limit;
   const maxRating = first(raw.maxRating);
   if (isRating(maxRating)) query.maxRating = maxRating;
+  const like = asPositiveInt(raw.like);
+  if (like) query.like = like;
+  const text = first(raw.q)?.trim();
+  if (text) query.text = text.slice(0, MAX_EMBED_TEXT_LENGTH);
   return query;
 }
 
@@ -167,6 +183,16 @@ export interface TagListResponse {
   tags: TagCount[];
 }
 
+/** A picture with near-identical copies: the copy kept in grids, then the smaller ones. */
+export interface DuplicateCluster {
+  best: ImageTile;
+  copies: ImageTile[];
+}
+
+export interface DuplicatesResponse {
+  clusters: DuplicateCluster[];
+}
+
 export interface AddTagRequest {
   /** Accepts "name" or "category:name". */
   tag: string;
@@ -207,6 +233,10 @@ export interface TaggingStatus {
   total: number;
   taggerOnline: boolean;
   taggerModel: string | null;
+  /** The embedding model used for similar/describe search, or null when there is none. */
+  embedModel: string | null;
+  /** Tagged images still waiting for an embedding. */
+  embeddingsPending: number;
 }
 
 export interface StatusResponse {
@@ -229,6 +259,8 @@ export interface Settings {
   generalThreshold: number;
   /** Minimum confidence for automatically assigned character tags to be shown (0..1). */
   characterThreshold: number;
+  /** Hide a smaller copy of a picture when its best copy is in the same grid. */
+  hideDuplicates: boolean;
 }
 
 /** How a request is signed in: nothing configured, a passcode session, or a tailnet identity. */

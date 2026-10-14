@@ -1,10 +1,12 @@
 import { vi } from 'vitest';
+import { encodeVector, normalize } from '@eikon/shared';
 import { AuthService } from '../../src/auth/authService';
 import { LoginThrottle } from '../../src/auth/loginThrottle';
 import { MemorySecretStore } from '../../src/auth/secretStore';
 import { SessionSigner } from '../../src/auth/session';
 import { buildApp } from '../../src/http/app';
 import type { AppDeps } from '../../src/http/deps';
+import { SimilarityService } from '../../src/similarity/similarityService';
 import { createTestRepos } from './fixtures';
 import { FakeClock, MemoryLibrary, MemoryThumbnails } from './fakes';
 
@@ -22,8 +24,19 @@ export async function createTestApp(options: TestAppOptions = {}) {
   const scheduler = { requestScan: vi.fn() };
   const worker = {
     wake: vi.fn(),
-    status: () => ({ ...repos.tagQueue.counts(), taggerOnline: true, taggerModel: 'fake' }),
+    status: () => ({
+      ...repos.tagQueue.counts(),
+      taggerOnline: true,
+      taggerModel: 'fake',
+      embedModel: 'clip',
+      embeddingsPending: 0,
+    }),
   };
+  const embedText = vi.fn(async (_text: string) => ({
+    model: 'clip',
+    vector: encodeVector(normalize([1, 0])),
+  }));
+  const similarity = new SimilarityService(repos.embeddings, { embedText });
   const deps: AppDeps = {
     repos,
     auth: new AuthService({
@@ -42,11 +55,12 @@ export async function createTestApp(options: TestAppOptions = {}) {
     scheduler,
     worker,
     thumbnails,
+    similarity,
     library,
     clock,
     cookieSecure: false,
     webDistDir: options.webDistDir,
   };
   const app = await buildApp(deps, { logger: false });
-  return { app, repos, library, thumbnails, scheduler, worker };
+  return { app, repos, library, thumbnails, scheduler, worker, similarity, embedText };
 }

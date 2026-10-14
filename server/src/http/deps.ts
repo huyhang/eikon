@@ -4,6 +4,7 @@ import type { TailscaleTrust } from '../auth/tailscaleIdentity';
 import type { Repositories } from '../db/repositories';
 import type { LibrarySource } from '../library/librarySource';
 import type { ThumbnailStore } from '../media/thumbnailStore';
+import type { SimilarityService } from '../similarity/similarityService';
 import type { Clock } from '../util/clock';
 
 /** Everything the HTTP layer needs, injected by the composition root (or a test). */
@@ -16,6 +17,7 @@ export interface AppDeps {
   scheduler: { requestScan(): void };
   worker: { status(): TaggingStatus; wake(): void };
   thumbnails: ThumbnailStore;
+  similarity: Pick<SimilarityService, 'similarTo' | 'describe'>;
   library: LibrarySource;
   clock: Clock;
   cookieSecure: boolean;

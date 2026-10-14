@@ -50,9 +50,27 @@ export class FakeProcessor implements ImageProcessor {
       format: 'png',
       animated: false,
       placeholder: 'AAAA',
+      phash: fakePhash(bytes),
       thumbnails: { sm: Buffer.from(`sm:${bytes}`), lg: Buffer.from(`lg:${bytes}`) },
     };
   }
+
+  async perceptualHash(bytes: Buffer): Promise<string> {
+    return fakePhash(bytes);
+  }
+}
+
+/** Content like "dup:3" hashes to the same value as "dup:3:smaller", making near-duplicates easy to stage. */
+export function fakePhash(bytes: Buffer): string {
+  const key = bytes
+    .toString()
+    .replace(/^(sm|lg):/, '')
+    .split(':')
+    .slice(0, 2)
+    .join(':');
+  let h = 0n;
+  for (const ch of key) h = (h * 131n + BigInt(ch.charCodeAt(0))) & 0xffffffffffffffffn;
+  return h.toString(16).padStart(16, '0');
 }
 
 export class MemoryThumbnails implements ThumbnailStore {

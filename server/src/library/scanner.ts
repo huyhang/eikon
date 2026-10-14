@@ -20,6 +20,10 @@ export interface ScannerDeps {
   concurrency: number;
   /** Called after a scan that discovered at least one new image. */
   onImagesAdded?: () => void;
+  /** Called with the ids of images deleted because no file points at them any more. */
+  onImagesRemoved?: (ids: number[]) => void;
+  /** Re-links near-duplicates after scans that changed something (and after the first scan). */
+  duplicates?: { refresh(): Promise<unknown> };
 }
 
 export interface ScanSummary {
@@ -39,6 +43,7 @@ export class Scanner {
   /** Files that failed to decode, by signature, so they are not re-read every scan. */
   private readonly broken = new Map<string, string>();
   private state: ScanStatus = { phase: 'idle', processed: 0, total: 0, lastScanAt: null, lastError: null };
+  private duplicatesChecked = false;
 
   constructor(private readonly deps: ScannerDeps) {}
 
@@ -72,6 +77,7 @@ export class Scanner {
         ...tally(outcomes),
         unchanged: plan.unchanged.length,
       };
+      await this.refreshDuplicates(summary);
       this.update({ phase: 'idle', lastScanAt: this.deps.clock.now(), lastError: null });
       this.deps.logger.info(summary, 'scan finished');
       if (summary.added > 0) this.deps.onImagesAdded?.();
@@ -137,6 +143,7 @@ export class Scanner {
         animated: processed.animated,
         sizeBytes: bytes.length,
         placeholder: processed.placeholder,
+        phash: processed.phash,
         addedAt: entry.mtimeMs,
       }),
     };
@@ -145,11 +152,24 @@ export class Scanner {
   private async cleanUp(scanId: number): Promise<Pick<ScanSummary, 'removedFiles' | 'removedImages'>> {
     const { files, images, groups, tags } = this.deps.repos;
     const removedFiles = files.deleteNotSeen(scanId);
-    const orphanHashes = images.deleteOrphans();
-    await Promise.all(orphanHashes.map((hash) => this.deps.thumbnails.delete(hash)));
+    const orphans = images.deleteOrphans();
+    await Promise.all(orphans.map(({ hash }) => this.deps.thumbnails.delete(hash)));
+    if (orphans.length) this.deps.onImagesRemoved?.(orphans.map(({ id }) => id));
     groups.deleteEmpty();
     tags.deleteUnused();
-    return { removedFiles, removedImages: orphanHashes.length };
+    return { removedFiles, removedImages: orphans.length };
+  }
+
+  /** Duplicate detection never fails a scan; it is retried after the next one. */
+  private async refreshDuplicates(summary: ScanSummary): Promise<void> {
+    const { duplicates } = this.deps;
+    if (!duplicates || (this.duplicatesChecked && !summary.added && !summary.removedImages)) return;
+    try {
+      await duplicates.refresh();
+      this.duplicatesChecked = true;
+    } catch (error) {
+      this.deps.logger.warn({ err: error }, 'duplicate detection failed');
+    }
   }
 
   private nextScanId(): number {

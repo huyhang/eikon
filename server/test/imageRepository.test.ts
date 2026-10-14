@@ -61,7 +61,7 @@ describe('ImageRepository.list', () => {
 });
 
 describe('ImageRepository housekeeping', () => {
-  it('deletes images without files and returns their hashes', () => {
+  it('deletes images without files and returns them', () => {
     const repos = createTestRepos();
     seedImage(repos, { hash: 'keep' });
     repos.images.insert({
@@ -74,7 +74,7 @@ describe('ImageRepository housekeeping', () => {
       placeholder: '',
       addedAt: 0,
     });
-    expect(repos.images.deleteOrphans()).toEqual(['orphan']);
+    expect(repos.images.deleteOrphans()).toEqual([{ id: expect.any(Number), hash: 'orphan' }]);
     expect(repos.images.findIdByHash('keep')).toBeDefined();
   });
 
@@ -84,5 +84,89 @@ describe('ImageRepository housekeeping', () => {
     repos.images.touchAddedAt(id, 80);
     repos.images.touchAddedAt(id, 20);
     expect(repos.images.get(id)?.added_at).toBe(20);
+  });
+});
+
+function setupDuplicates() {
+  const repos = createTestRepos();
+  const ids = {
+    big: seedImage(repos, {
+      width: 2000,
+      height: 2000,
+      addedAt: 3,
+      group: { kind: 'illustrator', name: 'Ana' },
+    }),
+    small: seedImage(repos, {
+      width: 500,
+      height: 500,
+      addedAt: 2,
+      group: { kind: 'collection', name: 'Picks' },
+    }),
+    other: seedImage(repos, { addedAt: 1, group: { kind: 'collection', name: 'Picks' } }),
+  };
+  repos.images.setDuplicates(new Map([[ids.small, ids.big]]));
+  return { repos, ids };
+}
+
+describe('ImageRepository duplicates', () => {
+  it.each([
+    {
+      label: 'everything, hiding on: the smaller copy goes',
+      hide: true,
+      group: undefined,
+      expected: ['big', 'other'],
+    },
+    { label: 'everything, hiding off', hide: false, group: undefined, expected: ['big', 'small', 'other'] },
+    {
+      label: 'a collection holding only the small copy keeps it',
+      hide: true,
+      group: 'Picks',
+      expected: ['small', 'other'],
+    },
+  ])('$label', ({ hide, group, expected }) => {
+    const { repos, ids } = setupDuplicates();
+    const groupId = group ? repos.groups.list({}).find((g) => g.name === group)!.id : undefined;
+    const tiles = repos.images.list(groupId ? { group: groupId } : {}, {
+      ...THRESHOLDS,
+      hideDuplicates: hide,
+    }).tiles;
+    expect(tiles.map((t) => Object.entries(ids).find(([, v]) => v === t.id)![0])).toEqual(expected);
+  });
+
+  it('returns tiles by id in the requested order, hiding copies whose best copy is present', () => {
+    const { repos, ids } = setupDuplicates();
+    const order = [ids.other, ids.small, ids.big, 9999];
+    expect(repos.images.tilesByIds(order, { ...THRESHOLDS, hideDuplicates: true }).map((t) => t.id)).toEqual([
+      ids.other,
+      ids.big,
+    ]);
+    expect(repos.images.tilesByIds([], THRESHOLDS)).toEqual([]);
+  });
+
+  it('lists clusters and replaces links', () => {
+    const { repos, ids } = setupDuplicates();
+    expect(repos.images.duplicateClusters().map((c) => [c.best.id, c.copies.map((x) => x.id)])).toEqual([
+      [ids.big, [ids.small]],
+    ]);
+    expect(repos.images.setDuplicates(new Map([[ids.other, ids.big]]))).toBe(2);
+    expect(repos.images.setDuplicates(new Map([[ids.other, ids.big]]))).toBe(0);
+  });
+
+  it('finds ids matching a query for restricting rankings', () => {
+    const { repos, ids } = setupDuplicates();
+    const picks = repos.groups.list({}).find((g) => g.name === 'Picks')!.id;
+    expect([...repos.images.idsMatching({ group: picks }, THRESHOLDS)].toSorted()).toEqual(
+      [ids.small, ids.other].toSorted(),
+    );
+  });
+
+  it('tracks images that still need a perceptual hash', () => {
+    const { repos, ids } = setupDuplicates();
+    expect(repos.images.missingPhash(10).map((r) => r.id)).toEqual([ids.big, ids.small, ids.other]);
+    repos.images.setPhash(ids.big, '00000000000000ff');
+    expect(repos.images.missingPhash(10).map((r) => r.id)).toEqual([ids.small, ids.other]);
+    expect(repos.images.duplicateCandidates()).toEqual([
+      { id: ids.big, phash: '00000000000000ff', width: 2000, height: 2000, sizeBytes: 1000 },
+    ]);
   });
 });

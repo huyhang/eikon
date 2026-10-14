@@ -2,7 +2,14 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { decodeTile, type ImageListResponse } from '@eikon/shared';
+import {
+  decodeTile,
+  encodeVector,
+  normalize,
+  type DuplicatesResponse,
+  type ImageListResponse,
+} from '@eikon/shared';
+import { TaggerUnavailableError } from '../src/tagging/taggerClient';
 import { requiresSession } from '../src/http/app';
 import { mimeTypeFor } from '../src/http/routes/media';
 import { sanitizeSavedQuery } from '../src/http/routes/tags';
@@ -267,9 +274,76 @@ describe('system', () => {
     const updated = await app.inject({
       method: 'PUT',
       url: '/api/settings',
-      payload: { generalThreshold: 0.5, characterThreshold: 7 },
+      payload: { generalThreshold: 0.5, characterThreshold: 7, hideDuplicates: false },
     });
-    expect(updated.json()).toEqual({ generalThreshold: 0.5, characterThreshold: 0.85 });
+    expect(updated.json()).toEqual({
+      generalThreshold: 0.5,
+      characterThreshold: 0.85,
+      hideDuplicates: false,
+    });
+  });
+});
+
+const clipVector = (...v: number[]) => ({ model: 'clip', vector: encodeVector(normalize(v)) });
+
+async function seeded() {
+  const ctx = await setup();
+  const { repos, similarity } = ctx;
+  const ids = {
+    sea: seedImage(repos, { tags: ['sea'] }),
+    wave: seedImage(repos, { tags: ['wave'] }),
+    city: seedImage(repos, { tags: ['city'] }),
+    plain: seedImage(repos, { tags: ['plain'] }),
+  };
+  similarity.save(ids.sea, clipVector(1, 0));
+  similarity.save(ids.wave, clipVector(0.8, 0.4));
+  similarity.save(ids.city, clipVector(0, 1));
+  return { ...ctx, ids };
+}
+
+const idsOf = (body: ImageListResponse) => body.tiles.map((t) => decodeTile(t).id);
+
+describe('similar and describe search', () => {
+  it('ranks images like another one', async () => {
+    const { app, ids } = await seeded();
+    const res = await app.inject(`/api/images?like=${ids.sea}`);
+    expect(idsOf(res.json())).toEqual([ids.wave, ids.city]);
+  });
+
+  it('ranks images by description, filtered by tags', async () => {
+    const { app, ids, embedText } = await seeded();
+    const res = await app.inject('/api/images?q=stormy%20sea&tag=wave');
+    expect(embedText).toHaveBeenCalledWith('stormy sea');
+    expect(idsOf(res.json())).toEqual([ids.wave]);
+  });
+
+  it.each([
+    {
+      label: 'an image without an embedding',
+      url: (ids: Record<string, number>) => `/api/images?like=${ids.plain}`,
+      status: 409,
+    },
+    { label: 'a missing image', url: () => '/api/images?like=99999', status: 404 },
+  ])('explains $label with $status', async ({ url, status }) => {
+    const { app, ids } = await seeded();
+    const res = await app.inject(url(ids));
+    expect(res.statusCode).toBe(status);
+    expect(res.json().error).toBeTruthy();
+  });
+
+  it('answers 503 when gpubox cannot embed the description', async () => {
+    const { app, embedText } = await seeded();
+    embedText.mockRejectedValueOnce(new TaggerUnavailableError('down'));
+    expect((await app.inject('/api/images?q=sea')).statusCode).toBe(503);
+  });
+
+  it('lists duplicate clusters', async () => {
+    const { app, repos } = await setup();
+    const big = seedImage(repos, { width: 3000, height: 3000 });
+    const small = seedImage(repos, { width: 300, height: 300 });
+    repos.images.setDuplicates(new Map([[small, big]]));
+    const body: DuplicatesResponse = (await app.inject('/api/duplicates')).json();
+    expect(body.clusters.map((c) => [c.best.id, c.copies.map((x) => x.id)])).toEqual([[big, [small]]]);
   });
 });
 

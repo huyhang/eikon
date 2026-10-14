@@ -27,6 +27,8 @@ export const sampleDetail = (partial: Partial<ImageDetail> = {}): ImageDetail =>
   ...partial,
 });
 
+const DEFAULT_TEST_SETTINGS = { generalThreshold: 0.35, characterThreshold: 0.85, hideDuplicates: true };
+
 export const idleStatus: StatusResponse = {
   scan: { phase: 'idle', processed: 0, total: 0, lastScanAt: null, lastError: null },
   tagging: {
@@ -36,6 +38,8 @@ export const idleStatus: StatusResponse = {
     total: 10,
     taggerOnline: true,
     taggerModel: 'wd-eva02-large-tagger-v3',
+    embedModel: 'clip-vit-large-patch14',
+    embeddingsPending: 0,
   },
 };
 
@@ -86,8 +90,8 @@ export function createFakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
     failedImages: vi.fn(async () => []),
     retryFailed: vi.fn(async () => {}),
     retagAll: vi.fn(async () => {}),
-    settings: vi.fn(async () => ({ generalThreshold: 0.35, characterThreshold: 0.85 })),
-    updateSettings: vi.fn(async (patch) => ({ generalThreshold: 0.35, characterThreshold: 0.85, ...patch })),
+    settings: vi.fn(async () => ({ ...DEFAULT_TEST_SETTINGS })),
+    updateSettings: vi.fn(async (patch) => ({ ...DEFAULT_TEST_SETTINGS, ...patch })),
   };
   return { ...api, ...overrides };
 }

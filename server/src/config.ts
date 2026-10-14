@@ -77,7 +77,7 @@ export function parseConfig(env: Env, cwd = process.cwd()): Config {
     cookieSecure: boolean(env, 'EIKON_COOKIE_SECURE', false),
     scanIntervalMs: integer(env, 'EIKON_SCAN_INTERVAL_MINUTES', 5) * 60_000,
     processConcurrency: integer(env, 'EIKON_PROCESS_CONCURRENCY', 2),
-    tagConcurrency: integer(env, 'EIKON_TAG_CONCURRENCY', 2),
+    tagConcurrency: integer(env, 'EIKON_TAG_CONCURRENCY', 8),
     logLevel: optional(env, 'EIKON_LOG_LEVEL') ?? 'info',
     prettyLogs: boolean(env, 'EIKON_PRETTY_LOGS', false),
   };

@@ -1,7 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import {
   encodeTile,
+  isRankedQuery,
   parseImageQuery,
+  type DuplicatesResponse,
   type GroupDetailResponse,
   type GroupKind,
   type GroupListResponse,
@@ -12,6 +14,7 @@ import {
 } from '@eikon/shared';
 import type { Repositories } from '../../db/repositories';
 import { toTile } from '../../db/rows';
+import { RankedSearchError, rankedImages } from '../../search/rankedSearch';
 import type { AppDeps } from '../deps';
 import { notFound, parseId, type Query } from '../params';
 
@@ -38,7 +41,7 @@ export function imageDetail(repos: Repositories, id: number): ImageDetail | unde
   };
 }
 
-export function registerBrowseRoutes(app: FastifyInstance, { repos }: AppDeps): void {
+export function registerBrowseRoutes(app: FastifyInstance, { repos, similarity }: AppDeps): void {
   app.get<{ Querystring: Query }>('/api/home', async (request): Promise<HomeResponse> => {
     const { maxRating } = parseImageQuery(request.query);
     const thresholds = repos.settings.get();
@@ -81,10 +84,30 @@ export function registerBrowseRoutes(app: FastifyInstance, { repos }: AppDeps): 
     return body;
   });
 
-  app.get<{ Querystring: Query }>('/api/images', async (request): Promise<ImageListResponse> => {
-    const { total, tiles } = repos.images.list(parseImageQuery(request.query), repos.settings.get());
-    return { total, tiles: tiles.map(encodeTile) };
+  app.get<{ Querystring: Query }>('/api/images', async (request, reply) => {
+    const query = parseImageQuery(request.query);
+    const options = repos.settings.get();
+    if (!isRankedQuery(query)) {
+      const { total, tiles } = repos.images.list(query, options);
+      const body: ImageListResponse = { total, tiles: tiles.map(encodeTile) };
+      return body;
+    }
+    try {
+      const tiles = await rankedImages(query, options, { images: repos.images, similarity });
+      const body: ImageListResponse = { total: tiles.length, tiles: tiles.map(encodeTile) };
+      return body;
+    } catch (error) {
+      if (error instanceof RankedSearchError) return reply.code(error.status).send({ error: error.message });
+      throw error;
+    }
   });
+
+  app.get('/api/duplicates', async (): Promise<DuplicatesResponse> => ({
+    clusters: repos.images.duplicateClusters().map(({ best, copies }) => ({
+      best: toTile(best),
+      copies: copies.map(toTile),
+    })),
+  }));
 
   app.get<{ Params: { id: string } }>('/api/images/:id', async (request, reply) => {
     const id = parseId(request.params.id);

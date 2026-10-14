@@ -75,4 +75,18 @@ export const MIGRATIONS: string[] = [
     value TEXT NOT NULL
   );
   `,
+  // 2: near-duplicate detection and CLIP-style embeddings.
+  `
+  ALTER TABLE images ADD COLUMN phash TEXT;
+  -- Set on a smaller copy of an image: points at the best copy of its duplicate cluster.
+  ALTER TABLE images ADD COLUMN dup_of INTEGER REFERENCES images (id) ON DELETE SET NULL;
+  CREATE INDEX images_dup_of ON images (dup_of);
+
+  CREATE TABLE image_embeddings (
+    image_id INTEGER PRIMARY KEY REFERENCES images (id) ON DELETE CASCADE,
+    model    TEXT NOT NULL,
+    vector   BLOB NOT NULL
+  );
+  CREATE INDEX image_embeddings_model ON image_embeddings (model);
+  `,
 ];

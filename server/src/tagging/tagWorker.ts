@@ -1,4 +1,4 @@
-import type { TaggingStatus } from '@eikon/shared';
+import type { Embedding, TaggingStatus } from '@eikon/shared';
 import type { QueueCounts } from '../db/tagQueueRepository';
 import type { ThumbnailStore } from '../media/thumbnailStore';
 import { BackgroundLoop } from '../util/backgroundLoop';
@@ -6,6 +6,7 @@ import type { Clock, Sleep } from '../util/clock';
 import { mapWithConcurrency } from '../util/concurrency';
 import type { Logger } from '../util/logger';
 import { backoffDelay } from './backoff';
+import { EmbeddingBackfill } from './embeddingBackfill';
 import { TaggerUnavailableError, type TaggerClient } from './taggerClient';
 
 /** The queue operations the worker needs (implemented by TagQueueRepository). */
@@ -35,8 +36,17 @@ export interface TagWorkerOptions {
   idleMs: number;
 }
 
+/** Where embeddings go and which images still need one (implemented by the similarity layer). */
+export interface EmbeddingSink {
+  setModel(model: string | null): void;
+  save(imageId: number, embedding: Embedding): void;
+  missing(model: string, limit: number): number[];
+  countMissing(model: string): number;
+}
+
 export interface TagWorkerDeps {
   queue: TagQueue;
+  embeddings: EmbeddingSink;
   tagger: TaggerClient;
   /** Hash lookup so the worker can send the 2048px thumbnail instead of the original. */
   hashOf: (imageId: number) => string | undefined;
@@ -53,15 +63,35 @@ export type RunResult = 'worked' | 'idle' | 'offline';
 export class TagWorker {
   private online = false;
   private model: string | null = null;
+  private embedModel: string | null = null;
   private offlineStreak = 0;
   private readonly loop: BackgroundLoop;
+  private readonly backfill: EmbeddingBackfill;
 
   constructor(private readonly deps: TagWorkerDeps) {
     this.loop = new BackgroundLoop(() => this.iterate(), deps.sleep);
+    this.backfill = new EmbeddingBackfill({
+      missing: (model, limit) => deps.embeddings.missing(model, limit),
+      embed: async (id) => {
+        const image = await this.largeThumbnail(id);
+        return image ? deps.tagger.embedImage(image, 'image/webp') : null;
+      },
+      save: (id, embedding) => deps.embeddings.save(id, embedding),
+      logger: deps.logger,
+    });
   }
 
   status(): TaggingStatus {
-    return { ...this.deps.queue.counts(), taggerOnline: this.online, taggerModel: this.model };
+    const pending = this.embedModel
+      ? Math.max(0, this.deps.embeddings.countMissing(this.embedModel) - this.backfill.skippedCount)
+      : 0;
+    return {
+      ...this.deps.queue.counts(),
+      taggerOnline: this.online,
+      taggerModel: this.model,
+      embedModel: this.embedModel,
+      embeddingsPending: pending,
+    };
   }
 
   start(): void {
@@ -80,10 +110,20 @@ export class TagWorker {
   /** One iteration of the loop; exposed for tests. */
   async runOnce(): Promise<RunResult> {
     if (!(await this.checkHealth())) return 'offline';
-    const batch = this.deps.queue.nextBatch(this.deps.clock.now(), this.deps.options.batchSize);
-    if (batch.length === 0) return 'idle';
-    const results = await mapWithConcurrency(batch, this.deps.options.concurrency, (id) => this.tagOne(id));
+    const { batchSize, concurrency } = this.deps.options;
+    const batch = this.deps.queue.nextBatch(this.deps.clock.now(), batchSize);
+    if (batch.length === 0) return this.backfillEmbeddings();
+    const results = await mapWithConcurrency(batch, concurrency, (id) => this.tagOne(id));
     return results.includes('offline') ? 'offline' : 'worked';
+  }
+
+  private async backfillEmbeddings(): Promise<RunResult> {
+    if (!this.embedModel) return 'idle';
+    const { batchSize, concurrency } = this.deps.options;
+    const result = await this.backfill.runBatch(this.embedModel, batchSize, concurrency);
+    if (result === 'offline')
+      this.markOffline(new TaggerUnavailableError('tagger went away while embedding'));
+    return result;
   }
 
   /** How long to pause after a run result. */
@@ -109,6 +149,8 @@ export class TagWorker {
         this.deps.logger.info({ model: health.model, device: health.device }, 'tagger online');
       this.online = true;
       this.model = health.model;
+      this.embedModel = health.embedModel ?? null;
+      this.deps.embeddings.setModel(this.embedModel);
       this.offlineStreak = 0;
     } catch (error) {
       this.markOffline(error);
@@ -119,10 +161,11 @@ export class TagWorker {
   private async tagOne(imageId: number): Promise<'done' | 'failed' | 'offline'> {
     const { queue, tagger, clock, options } = this.deps;
     try {
-      const hash = this.deps.hashOf(imageId);
-      if (!hash) return 'done'; // deleted by a scan meanwhile
-      const image = await this.deps.thumbnails.read(hash, 'lg');
-      queue.markTagged(imageId, await tagger.tag(image, 'image/webp'), clock.now());
+      const image = await this.largeThumbnail(imageId);
+      if (!image) return 'done'; // deleted by a scan meanwhile
+      const result = await tagger.tag(image, 'image/webp');
+      queue.markTagged(imageId, result, clock.now());
+      if (result.embedding) this.deps.embeddings.save(imageId, result.embedding);
       return 'done';
     } catch (error) {
       if (error instanceof TaggerUnavailableError) {
@@ -136,6 +179,12 @@ export class TagWorker {
       this.deps.logger.warn({ imageId, err: message }, 'tagging failed');
       return 'failed';
     }
+  }
+
+  /** The 2048px preview sent to gpubox, or null if the image has been deleted meanwhile. */
+  private async largeThumbnail(imageId: number): Promise<Buffer | null> {
+    const hash = this.deps.hashOf(imageId);
+    return hash ? this.deps.thumbnails.read(hash, 'lg') : null;
   }
 
   private markOffline(error: unknown): void {

@@ -1,17 +1,27 @@
 import type { Settings } from '@eikon/shared';
 import type { Database } from './database';
 
-export const DEFAULT_SETTINGS: Settings = { generalThreshold: 0.35, characterThreshold: 0.85 };
+export const DEFAULT_SETTINGS: Settings = {
+  generalThreshold: 0.35,
+  characterThreshold: 0.85,
+  hideDuplicates: true,
+};
 
-/** Keeps only known keys holding numbers in [0, 1]. */
+const unitInterval = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1;
+const isBoolean = (v: unknown) => typeof v === 'boolean';
+
+const VALIDATORS: { [K in keyof Settings]: (value: unknown) => boolean } = {
+  generalThreshold: unitInterval,
+  characterThreshold: unitInterval,
+  hideDuplicates: isBoolean,
+};
+
+/** Keeps only known keys holding valid values. */
 export function sanitizeSettings(input: unknown): Partial<Settings> {
   if (typeof input !== 'object' || input === null) return {};
-  const result: Partial<Settings> = {};
-  for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[]) {
-    const value = (input as Record<string, unknown>)[key];
-    if (typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1) result[key] = value;
-  }
-  return result;
+  const raw = input as Record<string, unknown>;
+  const entries = Object.entries(VALIDATORS).filter(([key, valid]) => valid(raw[key]));
+  return Object.fromEntries(entries.map(([key]) => [key, raw[key]])) as Partial<Settings>;
 }
 
 export class SettingsRepository {

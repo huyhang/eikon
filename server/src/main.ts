@@ -7,33 +7,43 @@ import { FileSecretStore } from './auth/secretStore';
 import { SessionSigner } from './auth/session';
 import { parseConfig, type Config } from './config';
 import { Database } from './db/database';
-import { createRepositories } from './db/repositories';
+import { createRepositories, type Repositories } from './db/repositories';
 import { buildApp } from './http/app';
+import { DuplicateDetector } from './library/duplicateDetector';
 import { sha256 } from './library/hasher';
 import { FsLibrarySource } from './library/librarySource';
 import { Scanner } from './library/scanner';
 import { ScanScheduler } from './library/scanScheduler';
 import { SharpImageProcessor } from './media/imageProcessor';
 import { FsThumbnailStore } from './media/thumbnailStore';
+import { SimilarityService } from './similarity/similarityService';
 import { HttpTaggerClient } from './tagging/taggerClient';
 import { TagWorker } from './tagging/tagWorker';
 import { realSleep, systemClock } from './util/clock';
+import type { Logger } from 'pino';
 
-/** Composition root: the only place that knows concrete implementations. */
-async function main(config: Config): Promise<void> {
-  const logger = pino({
-    level: config.logLevel,
-    ...(config.prettyLogs ? { transport: { target: 'pino-pretty', options: { colorize: true } } } : {}),
-  });
-  mkdirSync(config.dataDir, { recursive: true });
+/** Shared services every builder may need. */
+interface Core {
+  config: Config;
+  logger: Logger;
+  repos: Repositories;
+  thumbnails: FsThumbnailStore;
+}
 
-  const repos = createRepositories(Database.open(path.join(config.dataDir, 'eikon.db')));
-  const thumbnails = new FsThumbnailStore(path.join(config.dataDir, 'thumbnails'));
-  const library = new FsLibrarySource(config.libraryDir);
-
-  const worker = new TagWorker({
+function buildTagWorker(
+  { config, logger, repos, thumbnails }: Core,
+  tagger: HttpTaggerClient,
+  similarity: SimilarityService,
+) {
+  return new TagWorker({
     queue: repos.tagQueue,
-    tagger: new HttpTaggerClient(config.taggerUrl, config.taggerToken, 60_000),
+    embeddings: {
+      setModel: (model) => similarity.setModel(model),
+      save: (id, embedding) => similarity.save(id, embedding),
+      missing: (model, limit) => repos.embeddings.missing(model, limit),
+      countMissing: (model) => repos.embeddings.countMissing(model),
+    },
+    tagger,
     hashOf: (id) => repos.images.hashOf(id),
     thumbnails,
     clock: systemClock,
@@ -50,22 +60,37 @@ async function main(config: Config): Promise<void> {
       idleMs: 30_000,
     },
   });
+}
 
-  const scanner = new Scanner({
-    library,
-    processor: new SharpImageProcessor(),
+function buildScanner(
+  { config, logger, repos, thumbnails }: Core,
+  onImagesAdded: () => void,
+  similarity: SimilarityService,
+) {
+  const processor = new SharpImageProcessor();
+  return new Scanner({
+    library: new FsLibrarySource(config.libraryDir),
+    processor,
     thumbnails,
     hasher: sha256,
     repos,
     clock: systemClock,
     logger: logger.child({ component: 'scanner' }),
     concurrency: config.processConcurrency,
-    onImagesAdded: () => worker.wake(),
+    onImagesAdded,
+    onImagesRemoved: (ids) => similarity.forget(ids),
+    duplicates: new DuplicateDetector({
+      images: repos.images,
+      processor,
+      thumbnails,
+      logger: logger.child({ component: 'duplicates' }),
+    }),
   });
-  const scheduler = new ScanScheduler(() => scanner.scan(), config.scanIntervalMs, realSleep, logger);
+}
 
+function buildAuth({ config }: Core) {
   const secrets = new FileSecretStore(path.join(config.dataDir, 'session.key'));
-  const auth = new AuthService({
+  return new AuthService({
     passcode: config.passcode,
     tailscaleSignIn: config.tailscaleUsers.length > 0,
     signer: new SessionSigner(secrets.current(), config.passcode ?? ''),
@@ -73,18 +98,41 @@ async function main(config: Config): Promise<void> {
     throttle: new LoginThrottle(systemClock),
     clock: systemClock,
   });
+}
+
+/** Composition root: the only place that knows concrete implementations. */
+async function main(config: Config): Promise<void> {
+  const logger = pino({
+    level: config.logLevel,
+    ...(config.prettyLogs ? { transport: { target: 'pino-pretty', options: { colorize: true } } } : {}),
+  });
+  mkdirSync(config.dataDir, { recursive: true });
+  const repos = createRepositories(Database.open(path.join(config.dataDir, 'eikon.db')));
+  const core: Core = {
+    config,
+    logger,
+    repos,
+    thumbnails: new FsThumbnailStore(path.join(config.dataDir, 'thumbnails')),
+  };
+
+  const tagger = new HttpTaggerClient(config.taggerUrl, config.taggerToken, 60_000);
+  const similarity = new SimilarityService(repos.embeddings, tagger);
+  const worker = buildTagWorker(core, tagger, similarity);
+  const scanner = buildScanner(core, () => worker.wake(), similarity);
+  const scheduler = new ScanScheduler(() => scanner.scan(), config.scanIntervalMs, realSleep, logger);
   const tailscale = { proxies: config.trustedProxies, users: config.tailscaleUsers };
 
   const app = await buildApp(
     {
       repos,
-      auth,
+      auth: buildAuth(core),
       tailscale,
       scanner,
       scheduler,
       worker,
-      thumbnails,
-      library,
+      thumbnails: core.thumbnails,
+      similarity,
+      library: new FsLibrarySource(config.libraryDir),
       clock: systemClock,
       cookieSecure: config.cookieSecure,
       webDistDir: config.webDistDir,

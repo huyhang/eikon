@@ -10,6 +10,8 @@ describe('sanitizeSettings', () => {
     [{ generalThreshold: 1.5, characterThreshold: -1 }, {}],
     [{ generalThreshold: '0.5' }, {}],
     [{ characterThreshold: 0, other: 1 }, { characterThreshold: 0 }],
+    [{ hideDuplicates: false }, { hideDuplicates: false }],
+    [{ hideDuplicates: 'no' }, {}],
   ])('%j → %j', (input, expected) => {
     expect(sanitizeSettings(input)).toEqual(expected);
   });

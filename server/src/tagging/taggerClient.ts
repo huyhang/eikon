@@ -1,4 +1,4 @@
-import type { TaggerHealth, TaggerResult } from '@eikon/shared';
+import type { Embedding, TaggerHealth, TaggerResult } from '@eikon/shared';
 
 /** The tagger can't be reached or refuses us as a whole — retry later, don't blame the image. */
 export class TaggerUnavailableError extends Error {}
@@ -9,6 +9,8 @@ export class TaggerRejectedError extends Error {}
 export interface TaggerClient {
   health(): Promise<TaggerHealth>;
   tag(image: Buffer, contentType: string): Promise<TaggerResult>;
+  embedImage(image: Buffer, contentType: string): Promise<Embedding>;
+  embedText(text: string): Promise<Embedding>;
 }
 
 const UNAVAILABLE_STATUSES = new Set([401, 403, 404, 408, 429, 502, 503, 504]);
@@ -45,6 +47,22 @@ export class HttpTaggerClient implements TaggerClient {
       method: 'POST',
       headers: { 'content-type': contentType },
       body: new Uint8Array(image),
+    });
+  }
+
+  embedImage(image: Buffer, contentType: string): Promise<Embedding> {
+    return this.request<Embedding>('/v1/embed-image', {
+      method: 'POST',
+      headers: { 'content-type': contentType },
+      body: new Uint8Array(image),
+    });
+  }
+
+  embedText(text: string): Promise<Embedding> {
+    return this.request<Embedding>('/v1/embed-text', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text }),
     });
   }
 

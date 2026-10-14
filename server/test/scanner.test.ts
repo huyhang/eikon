@@ -11,6 +11,8 @@ function setup() {
   const thumbnails = new MemoryThumbnails();
   const clock = new FakeClock();
   const onImagesAdded = vi.fn();
+  const onImagesRemoved = vi.fn();
+  const duplicates = { refresh: vi.fn(async () => {}) };
   const scanner = new Scanner({
     library,
     processor,
@@ -21,8 +23,20 @@ function setup() {
     logger: silentLogger,
     concurrency: 2,
     onImagesAdded,
+    onImagesRemoved,
+    duplicates,
   });
-  return { repos, library, processor, thumbnails, clock, scanner, onImagesAdded };
+  return {
+    repos,
+    library,
+    processor,
+    thumbnails,
+    clock,
+    scanner,
+    onImagesAdded,
+    onImagesRemoved,
+    duplicates,
+  };
 }
 
 describe('Scanner', () => {
@@ -115,5 +129,52 @@ describe('Scanner', () => {
     const [first, second] = [scanner.scan(), scanner.scan()];
     expect(first).toBe(second);
     await first;
+  });
+});
+
+describe('Scanner hooks', () => {
+  it('stores a perceptual hash for new images', async () => {
+    const { repos, library, scanner } = setup();
+    library.put('Illustrators/Ana/a.jpg', 'dup:1');
+    await scanner.scan();
+    expect(repos.images.missingPhash(10)).toEqual([]);
+    expect(repos.images.duplicateCandidates()).toHaveLength(1);
+  });
+
+  it('reports removed images by id', async () => {
+    const { repos, library, scanner, onImagesRemoved } = setup();
+    library.put('Illustrators/Ana/a.jpg', 'A').put('Illustrators/Ana/b.jpg', 'B');
+    await scanner.scan();
+    const removed = repos.images.findIdByHash('h-B');
+    library.files.delete('Illustrators/Ana/b.jpg');
+    await scanner.scan();
+    expect(onImagesRemoved).toHaveBeenCalledWith([removed]);
+  });
+
+  it.each([
+    { label: 'first scan, even with nothing new', changes: () => {}, scans: 1, calls: 1 },
+    { label: 'later scans without changes', changes: () => {}, scans: 2, calls: 1 },
+    {
+      label: 'a later scan that adds an image',
+      changes: (library: MemoryLibrary) => library.put('Illustrators/Ana/c.jpg', 'C'),
+      scans: 2,
+      calls: 2,
+    },
+  ])('refreshes duplicates: $label', async ({ changes, scans, calls }) => {
+    const { library, scanner, duplicates } = setup();
+    library.put('Illustrators/Ana/a.jpg', 'A');
+    await scanner.scan();
+    changes(library);
+    for (let i = 1; i < scans; i++) await scanner.scan();
+    expect(duplicates.refresh).toHaveBeenCalledTimes(calls);
+  });
+
+  it('keeps scanning when duplicate detection fails, and retries next time', async () => {
+    const { library, scanner, duplicates } = setup();
+    duplicates.refresh.mockRejectedValueOnce(new Error('thumbnail store offline'));
+    library.put('Illustrators/Ana/a.jpg', 'A');
+    await expect(scanner.scan()).resolves.toMatchObject({ added: 1 });
+    await scanner.scan();
+    expect(duplicates.refresh).toHaveBeenCalledTimes(2);
   });
 });

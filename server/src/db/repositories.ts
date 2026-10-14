@@ -1,4 +1,5 @@
 import type { Database } from './database';
+import { EmbeddingRepository } from './embeddingRepository';
 import { FavoriteRepository } from './favoriteRepository';
 import { FileRepository } from './fileRepository';
 import { GroupRepository } from './groupRepository';
@@ -11,6 +12,7 @@ import { TagRepository } from './tagRepository';
 export interface Repositories {
   db: Database;
   images: ImageRepository;
+  embeddings: EmbeddingRepository;
   files: FileRepository;
   groups: GroupRepository;
   tags: TagRepository;
@@ -25,6 +27,7 @@ export function createRepositories(db: Database): Repositories {
   return {
     db,
     images: new ImageRepository(db),
+    embeddings: new EmbeddingRepository(db),
     files: new FileRepository(db),
     groups: new GroupRepository(db),
     tags,
