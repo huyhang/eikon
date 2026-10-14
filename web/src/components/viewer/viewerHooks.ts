@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { thumbUrl, type ImageTile } from '@eikon/shared';
+import { SIDEBAR_QUERY, useMediaQuery } from '../../hooks/useMediaQuery';
 import { viewerKeyAction, type ViewerKeyAction, type ViewerKeyState } from './viewerKeys';
 
 export function useViewportSize() {
@@ -10,6 +11,13 @@ export function useViewportSize() {
     return () => window.removeEventListener('resize', onResize);
   }, []);
   return size;
+}
+
+/** Width of the app's sidebar (--sidebar-width) while it shows; 0 on phones. */
+export function useSidebarWidth(): number {
+  const shown = useMediaQuery(SIDEBAR_QUERY);
+  if (!shown) return 0;
+  return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width')) || 0;
 }
 
 /** Routes key presses (outside text fields) through viewerKeyAction to the handlers. */

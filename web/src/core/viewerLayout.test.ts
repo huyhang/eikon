@@ -18,6 +18,7 @@ const base: ViewerLayoutInput = {
   chrome: true,
   filmstrip: false,
   split: false,
+  sidebar: 0,
 };
 
 describe('viewerLayout', () => {
@@ -47,8 +48,13 @@ describe('viewerLayout', () => {
       expected: {
         stage: { width: 400, height: 320 },
         sheetHeight: 480,
-        insets: { top: TOP_BAR_SPACE, bottom: 8 },
+        insets: { top: TOP_BAR_SPACE, bottom: TOOLBAR_SPACE },
       },
+    },
+    {
+      name: 'phone, info open, chrome hidden: the picture uses all the room above the sheet',
+      input: { infoOpen: true, chrome: false },
+      expected: { stage: { width: 400, height: 320 }, insets: { top: 0, bottom: 8 } },
     },
     {
       name: 'tablet, info open: the panel sits beside the picture',
@@ -61,9 +67,9 @@ describe('viewerLayout', () => {
       expected: { insets: { top: TOP_BAR_SPACE, bottom: TOOLBAR_SPACE + FILMSTRIP_SPACE } },
     },
     {
-      name: 'tablet split view: the viewer takes 60% of the width',
-      input: { viewport: tablet, wide: true, split: true },
-      expected: { width: 720, stage: { width: 720, height: 800 } },
+      name: 'tablet split view: the viewer takes 55% of the space beside the sidebar',
+      input: { viewport: tablet, wide: true, split: true, sidebar: 200 },
+      expected: { width: 550, stage: { width: 550, height: 800 } },
     },
     {
       name: 'phones ignore split view and the filmstrip',

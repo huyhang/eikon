@@ -17,12 +17,33 @@
   }
 }
 
-.safeBadge {
+/* Status pills (offline, safe mode) stack above the tab bar, clear of the page headers. */
+.badges {
   position: fixed;
   left: 50%;
   bottom: calc(var(--tabbar-height) + var(--safe-bottom) + 10px);
   translate: -50% 0;
   z-index: 45;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.badges > * {
+  pointer-events: auto;
+}
+
+@media (min-width: 768px) {
+  .badges {
+    left: calc(50% + var(--sidebar-width) / 2);
+    bottom: 18px;
+  }
+}
+
+.safeBadge,
+.offlineBadge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -31,55 +52,31 @@
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
-  color: #1d1d1f;
-  background: var(--warning);
+  white-space: nowrap;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
   animation: badgeIn 360ms var(--ease-spring);
 }
 
-@media (min-width: 768px) {
-  .safeBadge {
-    left: calc(50% + var(--sidebar-width) / 2);
-    bottom: 18px;
-  }
-}
-
-@keyframes badgeIn {
-  from {
-    opacity: 0;
-    transform: translateY(12px) scale(0.9);
-  }
+.safeBadge {
+  color: #1d1d1f;
+  background: var(--warning);
 }
 
 .offlineBadge {
-  position: fixed;
-  left: 50%;
-  top: calc(var(--safe-top) + 10px);
-  translate: -50% 0;
-  z-index: 45;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 28px;
-  padding: 0 12px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
   color: var(--text);
   background: var(--glass-strong);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
-  animation: badgeIn 360ms var(--ease-spring);
 }
 
 .offlineBadge a {
   color: var(--accent);
 }
 
-@media (min-width: 768px) {
-  .offlineBadge {
-    left: calc(50% + var(--sidebar-width) / 2);
+@keyframes badgeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.9);
   }
 }
 

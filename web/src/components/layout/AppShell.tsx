@@ -29,8 +29,10 @@ export function AppShell() {
       <TabBar />
       <BulkBar />
       <CommandPalette />
-      <SafeModeBadge />
-      <OfflineBadge />
+      <div className={styles.badges}>
+        <OfflineBadge />
+        <SafeModeBadge />
+      </div>
     </div>
   );
 }

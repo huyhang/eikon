@@ -41,7 +41,11 @@
   border-top: 0.5px solid var(--separator);
 }
 
+/* Text takes the room a small control (a switch) leaves, so the switch stays on the right as on iOS;
+   only wide controls (segmented pickers, buttons) wrap below on phones. */
 .rowText {
+  flex: 1 1 12em;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;

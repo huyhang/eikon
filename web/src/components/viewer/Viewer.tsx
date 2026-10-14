@@ -19,6 +19,7 @@ import { NavArrows, Toolbar, TopBar } from './ViewerChrome';
 import {
   useOpenIndex,
   usePreloadNeighbours,
+  useSidebarWidth,
   useSplitPage,
   useViewerKeyboard,
   useViewportSize,
@@ -55,6 +56,7 @@ export function Viewer({
   const reduceMotion = useReducedMotion() ?? false;
   const wide = useMediaQuery(WIDE_VIEWER_QUERY);
   const viewport = useViewportSize();
+  const sidebar = useSidebarWidth();
   const { viewerSplit, setViewerSplit } = usePrefs();
   const [index, setIndex] = useOpenIndex(initialIndex);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -66,7 +68,7 @@ export function Viewer({
 
   const split = wide && viewerSplit;
   const filmstrip = wide && chrome && tiles.length > 1;
-  const layout = viewerLayout({ viewport, wide, infoOpen, chrome, filmstrip, split });
+  const layout = viewerLayout({ viewport, wide, infoOpen, chrome, filmstrip, split, sidebar });
   const tile = tiles[index];
   const detail = useImageDetail(tile?.id ?? null).data;
   const favorite = useToggleFavorite(tile?.id ?? -1);

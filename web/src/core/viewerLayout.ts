@@ -6,8 +6,8 @@ export const FILMSTRIP_SPACE = 60;
 export const INFO_PANEL_WIDTH = 380;
 /** Share of the screen the info sheet takes on phones; the picture moves into the rest. */
 export const INFO_SHEET_FRACTION = 0.6;
-/** Share of the screen the viewer takes in split view; the grid keeps the rest. */
-export const SPLIT_FRACTION = 0.6;
+/** Share of the space beside the sidebar the viewer takes in split view; the grid keeps the rest. */
+export const SPLIT_FRACTION = 0.55;
 
 export interface ViewerLayoutInput {
   viewport: { width: number; height: number };
@@ -18,6 +18,8 @@ export interface ViewerLayoutInput {
   chrome: boolean;
   filmstrip: boolean;
   split: boolean;
+  /** Width of the app's sidebar (0 when it isn't showing); split view divides the space beside it. */
+  sidebar: number;
 }
 
 export interface Insets {
@@ -39,18 +41,20 @@ export interface ViewerLayout {
 
 /** Where everything in the viewer goes, so the picture is never hidden behind chrome or the info sheet. */
 export function viewerLayout(input: ViewerLayoutInput): ViewerLayout {
-  const { viewport, wide, infoOpen, chrome, filmstrip, split } = input;
-  const width = wide && split ? Math.round(viewport.width * SPLIT_FRACTION) : viewport.width;
+  const { viewport, wide, infoOpen, chrome, filmstrip, split, sidebar } = input;
+  const width = wide && split ? Math.round((viewport.width - sidebar) * SPLIT_FRACTION) : viewport.width;
   const sheetHeight = !wide && infoOpen ? Math.round(viewport.height * INFO_SHEET_FRACTION) : 0;
   const stage = {
     width: width - (wide && infoOpen ? INFO_PANEL_WIDTH : 0),
     height: viewport.height - sheetHeight,
   };
-  const insets: Insets = sheetHeight
-    ? { top: TOP_BAR_SPACE, bottom: 8 }
-    : chrome
-      ? { top: TOP_BAR_SPACE, bottom: TOOLBAR_SPACE + (filmstrip && wide ? FILMSTRIP_SPACE : 0) }
-      : { top: 0, bottom: 0 };
+  // With the sheet up, the toolbar sits on top of it, so the picture stops above the toolbar.
+  const insets: Insets = !chrome
+    ? { top: 0, bottom: sheetHeight ? 8 : 0 }
+    : {
+        top: TOP_BAR_SPACE,
+        bottom: TOOLBAR_SPACE + (filmstrip && wide && !sheetHeight ? FILMSTRIP_SPACE : 0),
+      };
   return { width, stage, insets, padding: wide ? 20 : 0, sheetHeight };
 }
 
