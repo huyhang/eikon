@@ -2,7 +2,13 @@ import {
   decodeTile,
   imageQueryToSearchParams,
   type AuthStatus,
+  type BackupInfo,
+  type BackupListResponse,
+  type BulkEditRequest,
+  type BulkEditResponse,
   type CreateSavedSearchRequest,
+  type DuplicateCluster,
+  type DuplicatesResponse,
   type FailedImage,
   type FailedImagesResponse,
   type GroupDetailResponse,
@@ -21,9 +27,13 @@ import {
   type SavedSearch,
   type SavedSearchListResponse,
   type Settings,
+  type ReviewResponse,
   type StatusResponse,
   type TagCount,
+  type TagInfo,
+  type TagInfoListResponse,
   type TagListResponse,
+  type UpdateTagRequest,
 } from '@eikon/shared';
 import { ApiRequestError, type ApiClient, type ImageList, type LoginResult } from './client';
 
@@ -199,4 +209,70 @@ export class HttpApiClient implements ApiClient {
   updateSettings(patch: Partial<Settings>): Promise<Settings> {
     return this.request('/api/settings', this.json('PUT', patch));
   }
+
+  async signOutEverywhere(): Promise<void> {
+    await this.request('/api/auth/sign-out-everywhere', { method: 'POST' });
+  }
+
+  async duplicates(): Promise<DuplicateCluster[]> {
+    return (await this.request<DuplicatesResponse>('/api/duplicates')).clusters;
+  }
+
+  setRating(id: number, rating: Rating | null): Promise<ImageDetail> {
+    return this.request(`/api/images/${id}/rating`, this.json('PUT', { rating }));
+  }
+
+  async markReviewed(id: number): Promise<void> {
+    await this.request(`/api/images/${id}/reviewed`, { method: 'POST' });
+  }
+
+  reviewQueue(limit: number, maxRating?: Rating): Promise<ReviewResponse> {
+    return this.request(withParams('/api/review', { limit, maxRating }));
+  }
+
+  async markAllReviewed(): Promise<number> {
+    return (await this.request<{ marked: number }>('/api/review/mark-all', { method: 'POST' })).marked;
+  }
+
+  async bulkEdit(request: BulkEditRequest): Promise<number> {
+    return (await this.request<BulkEditResponse>('/api/images/bulk', this.json('POST', request))).updated;
+  }
+
+  manageTags(query: string, limit: number, offset: number): Promise<TagInfoListResponse> {
+    return this.request(withParams('/api/tags/manage', { q: query || undefined, limit, offset }));
+  }
+
+  tagInfo(name: string): Promise<TagInfo> {
+    return this.request(tagPath(name));
+  }
+
+  updateTag(name: string, patch: UpdateTagRequest): Promise<TagInfo> {
+    return this.request(tagPath(name), this.json('PATCH', patch));
+  }
+
+  addAlias(name: string, alias: string): Promise<TagInfo> {
+    return this.request(`${tagPath(name)}/aliases`, this.json('POST', { alias }));
+  }
+
+  removeAlias(name: string, alias: string): Promise<TagInfo> {
+    return this.request(`${tagPath(name)}/aliases/${encodeURIComponent(alias)}`, { method: 'DELETE' });
+  }
+
+  addImplication(name: string, implies: string): Promise<TagInfo> {
+    return this.request(`${tagPath(name)}/implications`, this.json('POST', { implies }));
+  }
+
+  removeImplication(name: string, implied: string): Promise<TagInfo> {
+    return this.request(`${tagPath(name)}/implications/${encodeURIComponent(implied)}`, { method: 'DELETE' });
+  }
+
+  async backups(): Promise<BackupInfo[]> {
+    return (await this.request<BackupListResponse>('/api/backups')).backups;
+  }
+
+  createBackup(): Promise<BackupInfo> {
+    return this.request('/api/backups', { method: 'POST' });
+  }
 }
+
+const tagPath = (name: string) => `/api/tags/manage/${encodeURIComponent(name)}`;

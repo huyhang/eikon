@@ -72,3 +72,124 @@ describe('HttpApiClient', () => {
     expect(init.body).toBe(JSON.stringify({ tag: 'character:miku' }));
   });
 });
+
+describe('HttpApiClient: curation and tag manager endpoints', () => {
+  it.each<{
+    name: string;
+    call: (c: HttpApiClient) => Promise<unknown>;
+    url: string;
+    method: string;
+    body?: unknown;
+  }>([
+    {
+      name: 'similar images',
+      call: (c) => c.images({ like: 7, limit: 12 }),
+      url: '/api/images?limit=12&like=7',
+      method: 'GET',
+    },
+    {
+      name: 'describe search',
+      call: (c) => c.images({ text: 'red sky' }),
+      url: '/api/images?q=red+sky',
+      method: 'GET',
+    },
+    {
+      name: 'rating override',
+      call: (c) => c.setRating(4, 'general'),
+      url: '/api/images/4/rating',
+      method: 'PUT',
+      body: { rating: 'general' },
+    },
+    {
+      name: 'rating reset',
+      call: (c) => c.setRating(4, null),
+      url: '/api/images/4/rating',
+      method: 'PUT',
+      body: { rating: null },
+    },
+    { name: 'mark reviewed', call: (c) => c.markReviewed(4), url: '/api/images/4/reviewed', method: 'POST' },
+    {
+      name: 'review queue',
+      call: (c) => c.reviewQueue(20, 'general'),
+      url: '/api/review?limit=20&maxRating=general',
+      method: 'GET',
+    },
+    {
+      name: 'bulk edit',
+      call: (c) => c.bulkEdit({ ids: [1, 2], favorite: true }),
+      url: '/api/images/bulk',
+      method: 'POST',
+      body: { ids: [1, 2], favorite: true },
+    },
+    {
+      name: 'manage tags',
+      call: (c) => c.manageTags('', 60, 0),
+      url: '/api/tags/manage?limit=60&offset=0',
+      method: 'GET',
+    },
+    {
+      name: 'tag with slash',
+      call: (c) => c.tagInfo('ranma_1/2'),
+      url: '/api/tags/manage/ranma_1%2F2',
+      method: 'GET',
+    },
+    {
+      name: 'rename tag',
+      call: (c) => c.updateTag('cat', { name: 'kitty' }),
+      url: '/api/tags/manage/cat',
+      method: 'PATCH',
+      body: { name: 'kitty' },
+    },
+    {
+      name: 'add alias',
+      call: (c) => c.addAlias('cat', 'neko'),
+      url: '/api/tags/manage/cat/aliases',
+      method: 'POST',
+      body: { alias: 'neko' },
+    },
+    {
+      name: 'remove implication',
+      call: (c) => c.removeImplication('cat', 'animal'),
+      url: '/api/tags/manage/cat/implications/animal',
+      method: 'DELETE',
+    },
+    { name: 'create backup', call: (c) => c.createBackup(), url: '/api/backups', method: 'POST' },
+    {
+      name: 'sign out everywhere',
+      call: (c) => c.signOutEverywhere(),
+      url: '/api/auth/sign-out-everywhere',
+      method: 'POST',
+    },
+  ])('$name → $method $url', async ({ call, url, method, body }) => {
+    const fetch = fakeFetch(200, { clusters: [], backups: [], marked: 0, updated: 2, total: 0, tiles: [] });
+    await call(new HttpApiClient({ fetch }));
+    const [calledUrl, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
+    expect(calledUrl).toBe(url);
+    expect(init.method ?? 'GET').toBe(method);
+    expect(init.body).toBe(body === undefined ? undefined : JSON.stringify(body));
+  });
+
+  it.each([
+    {
+      name: 'duplicates',
+      call: (c: HttpApiClient) => c.duplicates(),
+      body: { clusters: ['x'] },
+      expected: ['x'],
+    },
+    { name: 'backups', call: (c: HttpApiClient) => c.backups(), body: { backups: ['b'] }, expected: ['b'] },
+    {
+      name: 'mark all reviewed',
+      call: (c: HttpApiClient) => c.markAllReviewed(),
+      body: { marked: 5 },
+      expected: 5,
+    },
+    {
+      name: 'bulk edit',
+      call: (c: HttpApiClient) => c.bulkEdit({ ids: [1], favorite: true }),
+      body: { updated: 1 },
+      expected: 1,
+    },
+  ])('unwraps $name', async ({ call, body, expected }) => {
+    await expect(call(new HttpApiClient({ fetch: fakeFetch(200, body) }))).resolves.toEqual(expected);
+  });
+});

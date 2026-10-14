@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { AuthStatus, ImageDetail, ImageTile, StatusResponse } from '@eikon/shared';
+import type { AuthStatus, ImageDetail, ImageTile, StatusResponse, TagInfo } from '@eikon/shared';
 import type { ApiClient } from '../api/client';
 
 export const sampleTile = (id: number, partial: Partial<ImageTile> = {}): ImageTile => ({
@@ -26,6 +26,16 @@ export const sampleDetail = (partial: Partial<ImageDetail> = {}): ImageDetail =>
   tagStatus: 'done',
   ratingOverridden: false,
   reviewedAt: null,
+  ...partial,
+});
+
+export const sampleTagInfo = (partial: Partial<TagInfo> = {}): TagInfo => ({
+  name: 'blue_sky',
+  category: 'general',
+  count: 3,
+  aliases: [],
+  implies: [],
+  impliedBy: [],
   ...partial,
 });
 
@@ -94,6 +104,26 @@ export function createFakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
     retagAll: vi.fn(async () => {}),
     settings: vi.fn(async () => ({ ...DEFAULT_TEST_SETTINGS })),
     updateSettings: vi.fn(async (patch) => ({ ...DEFAULT_TEST_SETTINGS, ...patch })),
+    signOutEverywhere: vi.fn(async () => {}),
+    duplicates: vi.fn(async () => []),
+    setRating: vi.fn(async (id, rating) =>
+      sampleDetail({ id, rating: rating ?? 'general', ratingOverridden: rating !== null }),
+    ),
+    markReviewed: vi.fn(async () => {}),
+    reviewQueue: vi.fn(async () => ({ total: 0, images: [] })),
+    markAllReviewed: vi.fn(async () => 0),
+    bulkEdit: vi.fn(async (request) => request.ids.length),
+    manageTags: vi.fn(async () => ({ total: 0, tags: [] })),
+    tagInfo: vi.fn(async (name) => sampleTagInfo({ name })),
+    updateTag: vi.fn(async (name, patch) =>
+      sampleTagInfo({ name: patch.name ?? name, ...(patch.category ? { category: patch.category } : {}) }),
+    ),
+    addAlias: vi.fn(async (name, alias) => sampleTagInfo({ name, aliases: [alias] })),
+    removeAlias: vi.fn(async (name) => sampleTagInfo({ name })),
+    addImplication: vi.fn(async (name, implies) => sampleTagInfo({ name, implies: [implies] })),
+    removeImplication: vi.fn(async (name) => sampleTagInfo({ name })),
+    backups: vi.fn(async () => []),
+    createBackup: vi.fn(async () => ({ name: 'eikon-20261014-030000.db', sizeBytes: 1024, createdAt: 0 })),
   };
   return { ...api, ...overrides };
 }

@@ -1,11 +1,14 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
+  BulkEditRequest,
   CreateSavedSearchRequest,
   GroupKind,
   GroupSort,
   ImageDetail,
   ImageQuery,
+  Rating,
   Settings,
+  TagInfo,
 } from '@eikon/shared';
 import { useApi } from '../context/Dependencies';
 import { useMaxRating } from '../context/Prefs';
@@ -216,4 +219,117 @@ export function useAddTag(id: number) {
 export function useRemoveTag(id: number) {
   const api = useApi();
   return useTagMutation(id, (name) => api.removeTag(id, name));
+}
+
+/** Images most like `id` (needs embeddings; disabled when there is no embedding model). */
+export function useSimilarImages(id: number | null, limit: number, enabled: boolean) {
+  return useImages({ like: id ?? 0, limit }, enabled && id !== null);
+}
+
+export function useSetRating(id: number) {
+  const api = useApi();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (rating: Rating | null) => api.setRating(id, rating),
+    onSuccess: (detail) => {
+      client.setQueryData(queryKeys.image(id), detail);
+      void client.invalidateQueries({ queryKey: ['images'] });
+      void client.invalidateQueries({ queryKey: ['home'] });
+      void client.invalidateQueries({ queryKey: ['groups'] });
+    },
+  });
+}
+
+export function useDuplicates() {
+  const api = useApi();
+  return useQuery({ queryKey: queryKeys.duplicates, queryFn: () => api.duplicates() });
+}
+
+export function useReviewQueue(limit = 20) {
+  const api = useApi();
+  const maxRating = useMaxRating();
+  return useQuery({
+    queryKey: queryKeys.review(maxRating),
+    queryFn: () => api.reviewQueue(limit, maxRating),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useMarkReviewed() {
+  const api = useApi();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.markReviewed(id),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['images', 'review'] }),
+  });
+}
+
+export function useMarkAllReviewed() {
+  const api = useApi();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.markAllReviewed(),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['images', 'review'] }),
+  });
+}
+
+export function useBulkEdit() {
+  const api = useApi();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (request: BulkEditRequest) => api.bulkEdit(request),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['images'] });
+      void client.invalidateQueries({ queryKey: ['image'] });
+      void client.invalidateQueries({ queryKey: ['tags'] });
+    },
+  });
+}
+
+export const TAG_PAGE_SIZE = 60;
+
+export function useManagedTags(query: string, page: number) {
+  const api = useApi();
+  return useQuery({
+    queryKey: queryKeys.manageTags(query, page),
+    queryFn: () => api.manageTags(query, TAG_PAGE_SIZE, page * TAG_PAGE_SIZE),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useTagInfo(name: string | null) {
+  const api = useApi();
+  return useQuery({
+    queryKey: queryKeys.tagInfo(name ?? ''),
+    queryFn: () => api.tagInfo(name!),
+    enabled: name !== null,
+  });
+}
+
+/** Any tag-manager edit: refreshes everything tags appear in. */
+export function useTagEdit() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (edit: () => Promise<TagInfo>) => edit(),
+    onSuccess: (info) => {
+      client.setQueryData(queryKeys.tagInfo(info.name), info);
+      void client.invalidateQueries({ queryKey: ['tags'] });
+      void client.invalidateQueries({ queryKey: ['images'] });
+      void client.invalidateQueries({ queryKey: ['image'] });
+    },
+  });
+}
+
+export function useBackups() {
+  const api = useApi();
+  return useQuery({ queryKey: queryKeys.backups, queryFn: () => api.backups() });
+}
+
+export function useCreateBackup() {
+  const api = useApi();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.createBackup(),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.backups }),
+  });
 }

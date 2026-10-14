@@ -1,6 +1,9 @@
 import type {
   AuthStatus,
+  BackupInfo,
+  BulkEditRequest,
   CreateSavedSearchRequest,
+  DuplicateCluster,
   FailedImage,
   GroupDetailResponse,
   GroupKind,
@@ -14,8 +17,12 @@ import type {
   Rating,
   SavedSearch,
   Settings,
+  ReviewResponse,
   StatusResponse,
   TagCount,
+  TagInfo,
+  TagInfoListResponse,
+  UpdateTagRequest,
 } from '@eikon/shared';
 
 export interface ImageList {
@@ -57,7 +64,30 @@ export interface ApiClient {
   retagAll(): Promise<void>;
   settings(): Promise<Settings>;
   updateSettings(patch: Partial<Settings>): Promise<Settings>;
+
+  signOutEverywhere(): Promise<void>;
+  duplicates(): Promise<DuplicateCluster[]>;
+  setRating(id: number, rating: Rating | null): Promise<ImageDetail>;
+  markReviewed(id: number): Promise<void>;
+  reviewQueue(limit: number, maxRating?: Rating): Promise<ReviewResponse>;
+  markAllReviewed(): Promise<number>;
+  bulkEdit(request: BulkEditRequest): Promise<number>;
+
+  manageTags(query: string, limit: number, offset: number): Promise<TagInfoListResponse>;
+  tagInfo(name: string): Promise<TagInfo>;
+  updateTag(name: string, patch: UpdateTagRequest): Promise<TagInfo>;
+  addAlias(name: string, alias: string): Promise<TagInfo>;
+  removeAlias(name: string, alias: string): Promise<TagInfo>;
+  addImplication(name: string, implies: string): Promise<TagInfo>;
+  removeImplication(name: string, implied: string): Promise<TagInfo>;
+
+  backups(): Promise<BackupInfo[]>;
+  createBackup(): Promise<BackupInfo>;
 }
+
+/** Plain links (downloads go through the browser, not fetch). */
+export const EXPORT_URL = '/api/export';
+export const backupDownloadUrl = (name: string) => `/api/backups/${encodeURIComponent(name)}`;
 
 export class ApiRequestError extends Error {
   readonly status: number;

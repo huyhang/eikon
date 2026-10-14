@@ -16,4 +16,9 @@ export const queryKeys = {
   status: ['status'] as const,
   failed: ['tagging', 'failed'] as const,
   settings: ['settings'] as const,
+  duplicates: ['images', 'duplicates'] as const,
+  review: (maxRating?: Rating) => ['images', 'review', maxRating ?? 'all'] as const,
+  manageTags: (query: string, page: number) => ['tags', 'manage', query, page] as const,
+  tagInfo: (name: string) => ['tags', 'info', name] as const,
+  backups: ['backups'] as const,
 };
