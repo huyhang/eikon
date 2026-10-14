@@ -4,24 +4,27 @@ import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import { MotionConfig } from 'motion/react';
 import { AuthLockProvider, type LockSignal } from './context/AuthLock';
 import { DependenciesProvider, type Dependencies } from './context/Dependencies';
+import { OfflineProvider } from './context/Offline';
 import { PrefsProvider } from './context/Prefs';
 import { SelectionProvider } from './context/Selection';
 import { ToastProvider } from './context/Toasts';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { AuthGate } from './components/lock/AuthGate';
 import { AppShell } from './components/layout/AppShell';
-import { AllImagesPage } from './pages/AllImagesPage';
-import { DuplicatesPage } from './pages/DuplicatesPage';
-import { FavoritesPage } from './pages/FavoritesPage';
-import { GroupPage } from './pages/GroupPage';
-import { GroupsIndexPage } from './pages/GroupsIndexPage';
+import {
+  AllImagesPage,
+  DuplicatesPage,
+  FavoritesPage,
+  GroupPage,
+  GroupsIndexPage,
+  ReviewPage,
+  SavedPage,
+  SearchPage,
+  SettingsPage,
+  TagsPage,
+} from './lazyChunks';
 import { LibraryPage } from './pages/LibraryPage';
 import { NotFoundPage } from './pages/NotFoundPage';
-import { ReviewPage } from './pages/ReviewPage';
-import { SavedPage } from './pages/SavedPage';
-import { TagsPage } from './pages/TagsPage';
-import { SearchPage } from './pages/SearchPage';
-import { SettingsPage } from './pages/SettingsPage';
 
 interface AppProvidersProps {
   dependencies: Dependencies;
@@ -38,11 +41,13 @@ export function AppProviders({ dependencies, queryClient, lockSignal, children }
         <QueryClientProvider client={queryClient}>
           <AuthLockProvider lockSignal={lockSignal}>
             <PrefsProvider>
-              <ToastProvider>
-                <SelectionProvider>
-                  <MotionConfig reducedMotion="user">{children}</MotionConfig>
-                </SelectionProvider>
-              </ToastProvider>
+              <OfflineProvider>
+                <ToastProvider>
+                  <SelectionProvider>
+                    <MotionConfig reducedMotion="user">{children}</MotionConfig>
+                  </SelectionProvider>
+                </ToastProvider>
+              </OfflineProvider>
             </PrefsProvider>
           </AuthLockProvider>
         </QueryClientProvider>

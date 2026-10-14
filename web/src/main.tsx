@@ -5,7 +5,9 @@ import { QueryClient } from '@tanstack/react-query';
 import { ApiRequestError } from './api/client';
 import { HttpApiClient } from './api/httpClient';
 import { AppProviders, AppRoutes } from './App';
+import { preloadChunks } from './lazyChunks';
 import { LockSignal } from './context/AuthLock';
+import { BrowserOfflineService } from './offline/offlineService';
 import { LocalStorageStore } from './services/keyValueStore';
 import './styles/global.css';
 
@@ -17,6 +19,15 @@ const dependencies = {
   now: () => Date.now(),
   random: Math.random,
   confirm: (message: string) => window.confirm(message),
+  offline: new BrowserOfflineService({
+    // Service workers and Cache Storage only exist over HTTPS; the dev server has no /sw.js.
+    serviceWorker: import.meta.env.PROD
+      ? (navigator.serviceWorker as ServiceWorkerContainer | undefined)
+      : undefined,
+    caches: window.caches as CacheStorage | undefined,
+    storage: navigator.storage as StorageManager | undefined,
+    fetch: (url) => window.fetch(url, { credentials: 'same-origin' }),
+  }),
 };
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,3 +48,5 @@ createRoot(document.getElementById('root')!).render(
     </AppProviders>
   </StrictMode>,
 );
+
+preloadChunks();

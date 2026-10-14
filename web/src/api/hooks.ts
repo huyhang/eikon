@@ -36,11 +36,15 @@ export function useGroup(id: number) {
   return useQuery({ queryKey: queryKeys.group(id, maxRating), queryFn: () => api.group(id, maxRating) });
 }
 
+/** A query with the safe-mode rating cap applied. */
+export function withSafeMode(query: ImageQuery, maxRating: Rating | undefined): ImageQuery {
+  return maxRating ? { ...query, maxRating } : query;
+}
+
 /** Image list for a grid; safe mode is applied automatically. */
 export function useImages(query: ImageQuery, enabled = true) {
   const api = useApi();
-  const maxRating = useMaxRating();
-  const full: ImageQuery = maxRating ? { ...query, maxRating } : query;
+  const full = withSafeMode(query, useMaxRating());
   return useQuery({
     queryKey: queryKeys.images(full),
     queryFn: () => api.images(full),

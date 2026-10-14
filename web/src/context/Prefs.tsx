@@ -20,6 +20,7 @@ interface PrefsActions {
   clearRecentSearches(): void;
   setSlideshow(patch: Partial<SlideshowPrefs>): void;
   setViewerSplit(split: boolean): void;
+  setOfflineFavorites(on: boolean): void;
 }
 
 interface PrefsContextValue extends Prefs, PrefsActions {
@@ -66,6 +67,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
       clearRecentSearches: () => update({ recentSearches: [] }),
       setSlideshow: (patch) => setPrefs((p) => ({ ...p, slideshow: { ...p.slideshow, ...patch } })),
       setViewerSplit: (viewerSplit) => update({ viewerSplit }),
+      setOfflineFavorites: (offlineFavorites) => update({ offlineFavorites }),
     };
   }, []);
 

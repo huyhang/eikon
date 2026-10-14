@@ -16,10 +16,12 @@ import {
 } from '../api/hooks';
 import { queryKeys } from '../api/queryKeys';
 import { useDependencies } from '../context/Dependencies';
+import { useOffline } from '../context/Offline';
 import { usePrefs } from '../context/Prefs';
 import { formatBytes, formatCount, formatPercent, formatRelative } from '../core/format';
 import { DENSITY_ROW_HEIGHTS, defaultDensity } from '../core/gestures';
 import { hiddenRatings, RATING_LABELS } from '../core/safeMode';
+import { describeOfflineState } from '../offline/syncRunner';
 import type { ThemePref } from '../services/prefs';
 import { Button, Segmented, Switch } from '../components/common/Controls';
 import { Icon } from '../components/common/Icon';
@@ -46,6 +48,7 @@ export function SettingsPage() {
         <SafeModeGroup />
         <TaggingGroup />
         <LibraryGroup />
+        <OfflineGroup />
         <BackupGroup />
         <AccountGroup />
       </div>
@@ -282,6 +285,37 @@ function LinkRow({ to, label, detail }: { to: string; label: string; detail?: st
   );
 }
 
+function OfflineGroup() {
+  const { supported, enabled, state, setEnabled, syncNow } = useOffline();
+  if (!supported) {
+    return (
+      <Group title="Offline">
+        <Row
+          label="Keep favorites available offline"
+          detail="Needs Eikon opened over HTTPS (tailscale serve) in a browser with service workers"
+        />
+      </Group>
+    );
+  }
+  return (
+    <Group
+      title="Offline"
+      footer="Favorites are saved on this device so they open without a connection: on a plane, or away from your tailnet. On iPhone and iPad, add Eikon to the Home Screen so the browser keeps them."
+    >
+      <Row label="Keep favorites available offline" detail={describeOfflineState(state)}>
+        <Switch label="Keep favorites available offline" checked={enabled} onChange={setEnabled} />
+      </Row>
+      {enabled && (
+        <Row label="Sync now" detail="Also happens on its own after you change favorites">
+          <Button icon="refresh" onClick={syncNow} disabled={state.phase === 'syncing'}>
+            Sync
+          </Button>
+        </Row>
+      )}
+    </Group>
+  );
+}
+
 function BackupGroup() {
   const backups = useBackups();
   const create = useCreateBackup();
@@ -318,12 +352,14 @@ function BackupGroup() {
 
 function AccountGroup() {
   const { api, confirm } = useDependencies();
+  const offline = useOffline();
   const client = useQueryClient();
   const auth = client.getQueryData<AuthStatus>(queryKeys.authStatus);
   if (!auth?.required) return null;
   const leave = async (everywhere: boolean) => {
     if (everywhere && !confirm('Sign out on every device? Each one will need the passcode again.')) return;
     await (everywhere ? api.signOutEverywhere() : api.logout());
+    await offline.forget(); // nothing private stays on a device that's signed out
     client.clear();
     window.location.assign('/');
   };

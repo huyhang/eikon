@@ -6,6 +6,7 @@ import type { ApiClient } from '../api/client';
 import { AppProviders } from '../App';
 import { LockSignal } from '../context/AuthLock';
 import { MemoryStore } from '../services/keyValueStore';
+import { NO_OFFLINE, type OfflineService } from '../offline/offlineService';
 import { createFakeApi } from './fakeApi';
 
 interface RenderOptions {
@@ -14,6 +15,7 @@ interface RenderOptions {
   now?: () => number;
   random?: () => number;
   confirm?: (message: string) => boolean;
+  offline?: OfflineService;
 }
 
 export function renderWithProviders(
@@ -24,6 +26,7 @@ export function renderWithProviders(
     now = () => Date.now(),
     random = () => 0.5,
     confirm = () => true,
+    offline = NO_OFFLINE,
   }: RenderOptions = {},
 ) {
   const queryClient = new QueryClient({
@@ -32,7 +35,7 @@ export function renderWithProviders(
   const lockSignal = new LockSignal();
   const result = render(
     <AppProviders
-      dependencies={{ api, store: new MemoryStore(), now, random, confirm }}
+      dependencies={{ api, store: new MemoryStore(), now, random, confirm, offline }}
       queryClient={queryClient}
       lockSignal={lockSignal}
     >

@@ -59,6 +59,11 @@ export function withParams(path: string, params: Params | URLSearchParams = {}):
   return qs ? `${path}?${qs}` : path;
 }
 
+/** The image list URL for a query; the offline sync saves the favorites list under exactly this. */
+export function imagesPath(query: ImageQuery): string {
+  return withParams('/api/images', imageQueryToSearchParams(query));
+}
+
 export class HttpApiClient implements ApiClient {
   private readonly fetchImpl: typeof fetch;
   private readonly baseUrl: string;
@@ -133,9 +138,7 @@ export class HttpApiClient implements ApiClient {
   }
 
   async images(query: ImageQuery): Promise<ImageList> {
-    const body = await this.request<ImageListResponse>(
-      withParams('/api/images', imageQueryToSearchParams(query)),
-    );
+    const body = await this.request<ImageListResponse>(imagesPath(query));
     return { total: body.total, tiles: body.tiles.map(decodeTile) };
   }
 

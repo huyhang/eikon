@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import type { ImageTile } from '@eikon/shared';
 import { usePrefs } from '../../context/Prefs';
@@ -8,8 +8,7 @@ import type { PressModifiers } from '../../hooks/useLongPress';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { clampDensity, defaultDensity } from '../../core/gestures';
 import { EMPTY_SEARCH, searchFromParams, searchReducer, searchToParams } from '../../core/searchState';
-import { Slideshow } from '../viewer/Slideshow';
-import { Viewer } from '../viewer/Viewer';
+import { Slideshow, Viewer } from '../../lazyChunks';
 import { ImageStrip } from './ImageStrip';
 import { JustifiedGrid, type JustifiedGridHandle } from './JustifiedGrid';
 import { useViewerState } from './useViewerState';
@@ -118,30 +117,32 @@ export function ImageCollection({
           maxRows={maxRows}
         />
       )}
-      {openIndex >= 0 && slideshowFrom === null && (
-        <Viewer
-          tiles={tiles}
-          initialIndex={openIndex}
-          contextKey={contextKey}
-          onIndexChange={onIndexChange}
-          onClose={viewer.close}
-          onSearch={onSearch}
-          onAddToSearch={onAddToSearch}
-          onFindSimilar={capabilities.similar ? onFindSimilar : undefined}
-          onPlay={setSlideshowFrom}
-        />
-      )}
-      {openIndex >= 0 && slideshowFrom !== null && (
-        <Slideshow
-          tiles={tiles}
-          startIndex={slideshowFrom}
-          onExit={(index) => {
-            setSlideshowFrom(null);
-            viewer.show(tiles[index]!.id);
-            gridRef.current?.revealItem(index);
-          }}
-        />
-      )}
+      <Suspense fallback={null}>
+        {openIndex >= 0 && slideshowFrom === null && (
+          <Viewer
+            tiles={tiles}
+            initialIndex={openIndex}
+            contextKey={contextKey}
+            onIndexChange={onIndexChange}
+            onClose={viewer.close}
+            onSearch={onSearch}
+            onAddToSearch={onAddToSearch}
+            onFindSimilar={capabilities.similar ? onFindSimilar : undefined}
+            onPlay={setSlideshowFrom}
+          />
+        )}
+        {openIndex >= 0 && slideshowFrom !== null && (
+          <Slideshow
+            tiles={tiles}
+            startIndex={slideshowFrom}
+            onExit={(index) => {
+              setSlideshowFrom(null);
+              viewer.show(tiles[index]!.id);
+              gridRef.current?.revealItem(index);
+            }}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

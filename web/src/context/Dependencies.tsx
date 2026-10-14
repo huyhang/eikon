@@ -1,5 +1,6 @@
 import { createContext, useContext, type ReactNode } from 'react';
 import type { ApiClient } from '../api/client';
+import type { OfflineService } from '../offline/offlineService';
 import type { KeyValueStore } from '../services/keyValueStore';
 
 export interface Dependencies {
@@ -10,6 +11,8 @@ export interface Dependencies {
   random: () => number;
   /** Asks the user to confirm a consequential action (window.confirm in the browser). */
   confirm: (message: string) => boolean;
+  /** Saving favorites for use without a connection (a service worker in production). */
+  offline: OfflineService;
 }
 
 const DependenciesContext = createContext<Dependencies | null>(null);

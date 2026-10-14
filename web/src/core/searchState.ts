@@ -181,6 +181,11 @@ export function searchToImageQuery(state: SearchState): ImageQuery {
   return query;
 }
 
+/** The Favorites page's query for a search (or none). */
+export function favoritesImageQuery(state: SearchState): ImageQuery {
+  return { ...searchToImageQuery(state), favorites: true };
+}
+
 export function searchToSavedQuery(state: SearchState): SavedQuery {
   const query: SavedQuery = { tags: state.include, exclude: state.exclude };
   if (state.group !== undefined) query.group = state.group;

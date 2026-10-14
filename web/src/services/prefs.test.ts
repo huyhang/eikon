@@ -36,6 +36,7 @@ describe('loadPrefs', () => {
       recentSearches: [search('a')],
       slideshow: { seconds: 20 as const, shuffle: true },
       viewerSplit: true,
+      offlineFavorites: true,
     };
     savePrefs(store, prefs);
     expect(loadPrefs(store)).toEqual(prefs);
@@ -44,23 +45,31 @@ describe('loadPrefs', () => {
 
 describe('loadPrefs: newer settings', () => {
   it.each([
-    { name: 'defaults', seed: {}, slideshow: { seconds: 10, shuffle: false }, split: false },
+    {
+      name: 'defaults',
+      seed: {},
+      slideshow: { seconds: 10, shuffle: false },
+      split: false,
+      offline: false,
+    },
     {
       name: 'stored',
-      seed: { slideshow: { seconds: 5, shuffle: true }, viewerSplit: true },
+      seed: { slideshow: { seconds: 5, shuffle: true }, viewerSplit: true, offlineFavorites: true },
       slideshow: { seconds: 5, shuffle: true },
       split: true,
+      offline: true,
     },
     {
       name: 'garbage',
-      seed: { slideshow: { seconds: 7, shuffle: 'yes' }, viewerSplit: 'on' },
+      seed: { slideshow: { seconds: 7, shuffle: 'yes' }, viewerSplit: 'on', offlineFavorites: 1 },
       slideshow: { seconds: 10, shuffle: false },
       split: false,
+      offline: false,
     },
-  ])('$name', ({ seed, slideshow, split }) => {
+  ])('$name', ({ seed, slideshow, split, offline }) => {
     const store = new MemoryStore();
     Object.entries(seed).forEach(([k, v]) => store.set(k, v));
-    expect(loadPrefs(store)).toMatchObject({ slideshow, viewerSplit: split });
+    expect(loadPrefs(store)).toMatchObject({ slideshow, viewerSplit: split, offlineFavorites: offline });
   });
 
   it.each([

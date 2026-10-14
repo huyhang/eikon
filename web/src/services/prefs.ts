@@ -21,6 +21,8 @@ export interface Prefs {
   slideshow: SlideshowPrefs;
   /** On wide screens, show the viewer beside the grid instead of over it. */
   viewerSplit: boolean;
+  /** Keep favorites saved on this device for use without a connection. */
+  offlineFavorites: boolean;
 }
 
 export const DEFAULT_SLIDESHOW: SlideshowPrefs = { seconds: 10, shuffle: false };
@@ -57,6 +59,7 @@ export function loadPrefs(store: KeyValueStore): Prefs {
     recentSearches: readRecentSearches(store.get<unknown>('recentSearches', [])),
     slideshow: readSlideshow(store.get<Partial<SlideshowPrefs> | null>('slideshow', null)),
     viewerSplit: store.get<unknown>('viewerSplit', false) === true,
+    offlineFavorites: store.get<unknown>('offlineFavorites', false) === true,
   };
 }
 
@@ -67,6 +70,7 @@ export function savePrefs(store: KeyValueStore, prefs: Prefs): void {
   store.set('recentSearches', prefs.recentSearches);
   store.set('slideshow', prefs.slideshow);
   store.set('viewerSplit', prefs.viewerSplit);
+  store.set('offlineFavorites', prefs.offlineFavorites);
 }
 
 /** Most recent first, deduped by criteria, capped. Returns the same list when nothing changes. */

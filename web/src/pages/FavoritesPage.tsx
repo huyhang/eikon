@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useImages } from '../api/hooks';
 import { pluralize } from '../core/format';
-import { emptyResultMessage, hasCriteria, searchToImageQuery } from '../core/searchState';
+import { emptyResultMessage, favoritesImageQuery, hasCriteria } from '../core/searchState';
 import { Spinner } from '../components/common/Controls';
 import { EmptyState } from '../components/common/EmptyState';
 import { ImageCollection } from '../components/grid/ImageCollection';
@@ -13,7 +13,7 @@ import styles from './FavoritesPage.module.css';
 
 export function FavoritesPage() {
   const [state, dispatch] = useSearchUrlState();
-  const query = useMemo(() => ({ ...searchToImageQuery(state), favorites: true }), [state]);
+  const query = useMemo(() => favoritesImageQuery(state), [state]);
   const results = useImages(query);
   const filtering = hasCriteria(state);
   const total = results.data?.total ?? 0;
