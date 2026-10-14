@@ -14,6 +14,9 @@ describe('parseConfig', () => {
       cookieSecure: false,
       scanIntervalMs: 300_000,
       tailscaleUsers: [],
+      backupHour: 3,
+      backupKeep: 7,
+      tagConcurrency: 8,
       trustedProxies: ['127.0.0.1', '::1'],
     });
   });
@@ -35,6 +38,8 @@ describe('parseConfig', () => {
     ],
     [{ EIKON_TAILSCALE_USERS: '*' }, 'tailscaleUsers', ['*']],
     [{ EIKON_TRUSTED_PROXIES: '172.30.100.1' }, 'trustedProxies', ['172.30.100.1']],
+    [{ EIKON_BACKUP_HOUR: '0' }, 'backupHour', 0],
+    [{ EIKON_BACKUP_KEEP: '14' }, 'backupKeep', 14],
   ])('%j sets %s', (env, key, expected) => {
     expect(parseConfig(env, '/app')[key as keyof ReturnType<typeof parseConfig>]).toEqual(expected);
   });
@@ -44,6 +49,8 @@ describe('parseConfig', () => {
     [{ EIKON_PORT: '0' }],
     [{ EIKON_TAG_CONCURRENCY: '1.5' }],
     [{ EIKON_TAGGER_URL: 'not a url' }],
+    [{ EIKON_BACKUP_HOUR: '24' }],
+    [{ EIKON_BACKUP_KEEP: '0' }],
   ])('rejects %j', (env) => {
     expect(() => parseConfig(env, '/app')).toThrow(ConfigError);
   });

@@ -1,7 +1,7 @@
 import type { GroupKind, GroupSort, GroupSummary, ImageQuery } from '@eikon/shared';
 import { ratingCondition } from '../search/imageFilter';
 import type { Database } from './database';
-import { TILE_COLUMNS, toTile, type TileRow } from './rows';
+import { TILE_COLUMNS, TILE_OUTPUT_COLUMNS, toTile, type TileRow } from './rows';
 import { sql, whereAll, type SqlFragment } from './sql';
 
 const COVERS_PER_GROUP = 4;
@@ -100,7 +100,7 @@ export class GroupRepository {
     if (groupIds.length === 0) return result;
     const filter = whereAll([...ratingCondition(maxRating), inList('d.group_id', groupIds)]);
     const rows = this.db.all<TileRow & { group_id: number }>({
-      text: `SELECT group_id, ${TILE_COLUMNS.replace(/i\./g, '')} FROM (
+      text: `SELECT group_id, ${TILE_OUTPUT_COLUMNS} FROM (
                SELECT d.group_id, ${TILE_COLUMNS}, row_number() OVER (
                  PARTITION BY d.group_id ORDER BY i.added_at DESC, i.id DESC) AS rn
                FROM (SELECT DISTINCT group_id, image_id FROM files) d JOIN images i ON i.id = d.image_id

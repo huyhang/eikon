@@ -393,3 +393,161 @@ describe('web app', () => {
     expect((await app.inject('/api/nope')).statusCode).toBe(404);
   });
 });
+
+describe('curation routes', () => {
+  it('overrides and resets a rating', async () => {
+    const { app, repos } = await setup();
+    const id = seedImage(repos, { tags: ['sky'], rating: 'explicit' });
+    const set = await app.inject({
+      method: 'PUT',
+      url: `/api/images/${id}/rating`,
+      payload: { rating: 'general' },
+    });
+    expect(set.json()).toMatchObject({ rating: 'general', ratingOverridden: true });
+    const reset = await app.inject({
+      method: 'PUT',
+      url: `/api/images/${id}/rating`,
+      payload: { rating: null },
+    });
+    expect(reset.json()).toMatchObject({ rating: 'explicit', ratingOverridden: false });
+    const bad = await app.inject({
+      method: 'PUT',
+      url: `/api/images/${id}/rating`,
+      payload: { rating: 'spicy' },
+    });
+    expect(bad.statusCode).toBe(400);
+  });
+
+  it('serves the review queue and marks images reviewed', async () => {
+    const { app, repos } = await setup();
+    const id = seedImage(repos, { tags: ['sky'] });
+    expect((await app.inject('/api/review')).json()).toMatchObject({
+      total: 1,
+      images: [{ id, reviewedAt: null }],
+    });
+    expect((await app.inject({ method: 'POST', url: `/api/images/${id}/reviewed` })).statusCode).toBe(204);
+    expect((await app.inject('/api/review')).json()).toMatchObject({ total: 0, images: [] });
+    seedImage(repos, { tags: ['more'] });
+    expect((await app.inject({ method: 'POST', url: '/api/review/mark-all' })).json()).toEqual({ marked: 1 });
+  });
+
+  it('applies bulk edits to existing images only', async () => {
+    const { app, repos } = await setup();
+    const a = seedImage(repos, { tags: ['sky'] });
+    const b = seedImage(repos, { tags: ['sky'] });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/images/bulk',
+      payload: { ids: [a, b, 99999], addTags: ['character:miku'], removeTags: ['sky'], favorite: true },
+    });
+    expect(res.json()).toEqual({ updated: 2 });
+    const detail = (await app.inject(`/api/images/${b}`)).json();
+    expect(detail.favorite).toBe(true);
+    expect(detail.tags.map((t: { name: string }) => t.name)).toEqual(['miku']);
+    expect(
+      (await app.inject({ method: 'POST', url: '/api/images/bulk', payload: { ids: [a] } })).statusCode,
+    ).toBe(400);
+  });
+});
+
+describe('tag manager routes', () => {
+  it('lists, renames, aliases and implies tags', async () => {
+    const { app, repos } = await setup();
+    seedImage(repos, { tags: ['cat', 'kitten'] });
+    const list = (await app.inject('/api/tags/manage?q=cat')).json();
+    expect(list.tags.map((t: { name: string }) => t.name)).toEqual(['cat']);
+
+    const renamed = await app.inject({
+      method: 'PATCH',
+      url: '/api/tags/manage/kitten',
+      payload: { name: 'cat' },
+    });
+    expect(renamed.json()).toMatchObject({ name: 'cat', aliases: ['kitten'] });
+
+    const implied = await app.inject({
+      method: 'POST',
+      url: '/api/tags/manage/cat/implications',
+      payload: { implies: 'animal' },
+    });
+    expect(implied.json()).toMatchObject({ implies: ['animal'] });
+    const loop = await app.inject({
+      method: 'POST',
+      url: '/api/tags/manage/animal/implications',
+      payload: { implies: 'cat' },
+    });
+    expect(loop.statusCode).toBe(409);
+
+    const aliased = await app.inject({
+      method: 'POST',
+      url: '/api/tags/manage/cat/aliases',
+      payload: { alias: 'neko' },
+    });
+    expect(aliased.json().aliases).toEqual(['kitten', 'neko']);
+    const unaliased = await app.inject({ method: 'DELETE', url: '/api/tags/manage/cat/aliases/neko' });
+    expect(unaliased.json().aliases).toEqual(['kitten']);
+    const unimplied = await app.inject({ method: 'DELETE', url: '/api/tags/manage/cat/implications/animal' });
+    expect(unimplied.json().implies).toEqual([]);
+  });
+
+  it.each([
+    {
+      label: 'an unknown tag',
+      method: 'GET' as const,
+      url: '/api/tags/manage/nope',
+      payload: undefined,
+      status: 404,
+    },
+    {
+      label: 'an empty new name',
+      method: 'PATCH' as const,
+      url: '/api/tags/manage/cat',
+      payload: { name: ' ' },
+      status: 400,
+    },
+    {
+      label: 'an unknown category',
+      method: 'PATCH' as const,
+      url: '/api/tags/manage/cat',
+      payload: { category: 'mood' },
+      status: 400,
+    },
+    {
+      label: 'an empty alias',
+      method: 'POST' as const,
+      url: '/api/tags/manage/cat/aliases',
+      payload: { alias: '' },
+      status: 400,
+    },
+  ])('rejects $label with $status', async ({ method, url, payload, status }) => {
+    const { app, repos } = await setup();
+    seedImage(repos, { tags: ['cat'] });
+    expect((await app.inject({ method, url, payload })).statusCode).toBe(status);
+  });
+});
+
+describe('backup and export routes', () => {
+  it('creates, lists and downloads backups', async () => {
+    const { app, repos } = await setup();
+    seedImage(repos);
+    const created = await app.inject({ method: 'POST', url: '/api/backups' });
+    expect(created.statusCode).toBe(201);
+    const { name } = created.json();
+    expect((await app.inject('/api/backups')).json().backups.map((b: { name: string }) => b.name)).toEqual([
+      name,
+    ]);
+    const download = await app.inject(`/api/backups/${name}`);
+    expect(download.headers['content-disposition']).toContain(name);
+    expect(download.rawPayload.subarray(0, 15).toString()).toBe('SQLite format 3');
+    expect((await app.inject('/api/backups/..%2Feikon.db')).statusCode).toBe(404);
+  });
+
+  it('exports curation as a JSON attachment', async () => {
+    const { app, repos } = await setup();
+    seedImage(repos, { hash: 'abc', tags: ['sky'] });
+    const res = await app.inject('/api/export');
+    expect(res.headers['content-disposition']).toMatch(
+      /attachment; filename="eikon-curation-\d{4}-\d{2}-\d{2}\.json"/,
+    );
+    expect(res.json()).toMatchObject({ format: 'eikon-curation', images: [{ sha256: 'abc' }] });
+  });
+});

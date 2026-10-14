@@ -2,6 +2,8 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import pino from 'pino';
 import { AuthService } from './auth/authService';
+import { BackupScheduler } from './backup/backupScheduler';
+import { BackupService } from './backup/backupService';
 import { LoginThrottle } from './auth/loginThrottle';
 import { FileSecretStore } from './auth/secretStore';
 import { SessionSigner } from './auth/session';
@@ -121,6 +123,19 @@ async function main(config: Config): Promise<void> {
   const scanner = buildScanner(core, () => worker.wake(), similarity);
   const scheduler = new ScanScheduler(() => scanner.scan(), config.scanIntervalMs, realSleep, logger);
   const tailscale = { proxies: config.trustedProxies, users: config.tailscaleUsers };
+  const backups = new BackupService(
+    repos.db,
+    path.join(config.dataDir, 'backups'),
+    config.backupKeep,
+    systemClock,
+  );
+  const backupScheduler = new BackupScheduler(
+    backups,
+    config.backupHour,
+    systemClock,
+    realSleep,
+    logger.child({ component: 'backup' }),
+  );
 
   const app = await buildApp(
     {
@@ -131,6 +146,7 @@ async function main(config: Config): Promise<void> {
       scheduler,
       worker,
       thumbnails: core.thumbnails,
+      backups,
       similarity,
       library: new FsLibrarySource(config.libraryDir),
       clock: systemClock,
@@ -152,11 +168,13 @@ async function main(config: Config): Promise<void> {
   );
   scheduler.start();
   worker.start();
+  backupScheduler.start();
 
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'shutting down');
     scheduler.stop();
     worker.stop();
+    backupScheduler.stop();
     await app.close();
     repos.db.close();
     process.exit(0);

@@ -1,8 +1,12 @@
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { vi } from 'vitest';
 import { encodeVector, normalize } from '@eikon/shared';
 import { AuthService } from '../../src/auth/authService';
 import { LoginThrottle } from '../../src/auth/loginThrottle';
 import { MemorySecretStore } from '../../src/auth/secretStore';
+import { BackupService } from '../../src/backup/backupService';
 import { SessionSigner } from '../../src/auth/session';
 import { buildApp } from '../../src/http/app';
 import type { AppDeps } from '../../src/http/deps';
@@ -11,6 +15,7 @@ import { createTestRepos } from './fixtures';
 import { FakeClock, MemoryLibrary, MemoryThumbnails } from './fakes';
 
 export interface TestAppOptions {
+  backupsDir?: string;
   passcode?: string;
   webDistDir?: string;
   tailscaleUsers?: string[];
@@ -55,6 +60,12 @@ export async function createTestApp(options: TestAppOptions = {}) {
     scheduler,
     worker,
     thumbnails,
+    backups: new BackupService(
+      repos.db,
+      options.backupsDir ?? mkdtempSync(path.join(tmpdir(), 'eikon-backups-')),
+      3,
+      clock,
+    ),
     similarity,
     library,
     clock,
@@ -62,5 +73,5 @@ export async function createTestApp(options: TestAppOptions = {}) {
     webDistDir: options.webDistDir,
   };
   const app = await buildApp(deps, { logger: false });
-  return { app, repos, library, thumbnails, scheduler, worker, similarity, embedText };
+  return { app, repos, library, thumbnails, scheduler, worker, similarity, embedText, clock };
 }

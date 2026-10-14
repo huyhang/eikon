@@ -11,6 +11,7 @@ import { registerBrowseRoutes } from './routes/browse';
 import { registerCurateRoutes } from './routes/curate';
 import { registerMediaRoutes } from './routes/media';
 import { registerSystemRoutes } from './routes/system';
+import { registerTagAdminRoutes } from './routes/tagAdmin';
 import { registerTagRoutes } from './routes/tags';
 
 /** API and media need a session; the app shell and /api/auth do not. */
@@ -38,6 +39,7 @@ export async function buildApp(deps: AppDeps, options: FastifyServerOptions = {}
   registerBrowseRoutes(app, deps);
   registerCurateRoutes(app, deps);
   registerTagRoutes(app, deps);
+  registerTagAdminRoutes(app, deps);
   registerSystemRoutes(app, deps);
   registerMediaRoutes(app, deps);
   await registerWebApp(app, deps.webDistDir);

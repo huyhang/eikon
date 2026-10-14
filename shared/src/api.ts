@@ -4,7 +4,8 @@ import { normalizeTagName, type TagCategory } from './tags';
 
 export type GroupKind = 'illustrator' | 'collection';
 export type TagStatus = 'pending' | 'done' | 'failed';
-export type TagSource = 'auto' | 'manual';
+/** 'implied': added because another tag on the image implies it. */
+export type TagSource = 'auto' | 'manual' | 'implied';
 
 /** Everything the grid needs to lay out and paint a tile before its thumbnail loads. */
 export interface ImageTile {
@@ -177,10 +178,107 @@ export interface ImageDetail extends ImageTile {
   tags: ImageTag[];
   favorite: boolean;
   tagStatus: TagStatus;
+  /** True when `rating` was set by hand rather than by the tagger. */
+  ratingOverridden: boolean;
+  /** When the user last confirmed this image's tags in the review queue (epoch ms). */
+  reviewedAt: number | null;
+}
+
+export interface SetRatingRequest {
+  /** null goes back to the tagger's rating. */
+  rating: Rating | null;
+}
+
+/** Recently tagged images whose tags the user hasn't confirmed yet. */
+export interface ReviewResponse {
+  total: number;
+  images: ImageDetail[];
+}
+
+/** Applies the same change to many images at once. */
+export interface BulkEditRequest {
+  ids: number[];
+  addTags?: string[];
+  removeTags?: string[];
+  favorite?: boolean;
+}
+
+export interface BulkEditResponse {
+  updated: number;
+}
+
+/** GET /api/export: everything curated in Eikon, keyed by file content so it outlives the database. */
+export interface CurationExport {
+  format: 'eikon-curation';
+  version: 1;
+  exportedAt: number;
+  tags: { name: string; category: TagCategory; aliases: string[]; implies: string[] }[];
+  savedSearches: SavedSearch[];
+  images: ExportedImage[];
+}
+
+export interface ExportedImage {
+  /** SHA-256 of the original file. */
+  sha256: string;
+  width: number;
+  height: number;
+  format: string;
+  addedAt: number;
+  files: ImageFileRef[];
+  favorite: boolean;
+  /** The tagger's rating; ratingOverride is the user's, when set. */
+  rating: Rating | null;
+  ratingOverride: Rating | null;
+  reviewedAt: number | null;
+  /** 'removed' records a tag the user took off; implied tags are derived and not exported. */
+  tags: {
+    name: string;
+    category: TagCategory;
+    source: 'auto' | 'manual' | 'removed';
+    confidence: number | null;
+  }[];
+}
+
+export interface BackupInfo {
+  name: string;
+  sizeBytes: number;
+  createdAt: number;
+}
+
+export interface BackupListResponse {
+  backups: BackupInfo[];
 }
 
 export interface TagListResponse {
   tags: TagCount[];
+}
+
+/** A tag with everything the tag manager shows and edits. */
+export interface TagInfo extends TagCount {
+  aliases: string[];
+  /** Tags this tag implies directly. */
+  implies: string[];
+  /** Tags that directly imply this one. */
+  impliedBy: string[];
+}
+
+export interface TagInfoListResponse {
+  total: number;
+  tags: TagInfo[];
+}
+
+/** Rename (merging into an existing tag of that name) and/or recategorise a tag. */
+export interface UpdateTagRequest {
+  name?: string;
+  category?: TagCategory;
+}
+
+export interface AddAliasRequest {
+  alias: string;
+}
+
+export interface AddImplicationRequest {
+  implies: string;
 }
 
 /** A picture with near-identical copies: the copy kept in grids, then the smaller ones. */

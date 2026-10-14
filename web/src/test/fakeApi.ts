@@ -24,6 +24,8 @@ export const sampleDetail = (partial: Partial<ImageDetail> = {}): ImageDetail =>
   ],
   favorite: false,
   tagStatus: 'done',
+  ratingOverridden: false,
+  reviewedAt: null,
   ...partial,
 });
 

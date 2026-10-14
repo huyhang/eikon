@@ -15,6 +15,10 @@ export interface Config {
   trustedProxies: string[];
   cookieSecure: boolean;
   scanIntervalMs: number;
+  /** Local hour (0–23) of the daily database backup. */
+  backupHour: number;
+  /** How many daily backups to keep. */
+  backupKeep: number;
   processConcurrency: number;
   tagConcurrency: number;
   logLevel: string;
@@ -25,12 +29,14 @@ export type Env = Record<string, string | undefined>;
 
 export class ConfigError extends Error {}
 
-function integer(env: Env, key: string, fallback: number, min = 1): number {
+function integer(env: Env, key: string, fallback: number, min = 1, max = Number.MAX_SAFE_INTEGER): number {
   const raw = env[key];
   if (raw === undefined || raw === '') return fallback;
   const value = Number(raw);
-  if (!Number.isInteger(value) || value < min)
-    throw new ConfigError(`${key} must be an integer ≥ ${min}, got "${raw}"`);
+  if (!Number.isInteger(value) || value < min || value > max) {
+    const range = max === Number.MAX_SAFE_INTEGER ? `≥ ${min}` : `between ${min} and ${max}`;
+    throw new ConfigError(`${key} must be an integer ${range}, got "${raw}"`);
+  }
   return value;
 }
 
@@ -76,6 +82,8 @@ export function parseConfig(env: Env, cwd = process.cwd()): Config {
     trustedProxies: list(env, 'EIKON_TRUSTED_PROXIES', ['127.0.0.1', '::1']),
     cookieSecure: boolean(env, 'EIKON_COOKIE_SECURE', false),
     scanIntervalMs: integer(env, 'EIKON_SCAN_INTERVAL_MINUTES', 5) * 60_000,
+    backupHour: integer(env, 'EIKON_BACKUP_HOUR', 3, 0, 23),
+    backupKeep: integer(env, 'EIKON_BACKUP_KEEP', 7),
     processConcurrency: integer(env, 'EIKON_PROCESS_CONCURRENCY', 2),
     tagConcurrency: integer(env, 'EIKON_TAG_CONCURRENCY', 8),
     logLevel: optional(env, 'EIKON_LOG_LEVEL') ?? 'info',

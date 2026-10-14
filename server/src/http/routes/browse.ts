@@ -38,6 +38,8 @@ export function imageDetail(repos: Repositories, id: number): ImageDetail | unde
     tags: repos.tags.forImage(id, repos.settings.get()),
     favorite: repos.favorites.has(id),
     tagStatus: image.tag_status,
+    ratingOverridden: image.rating_override !== null,
+    reviewedAt: image.reviewed_at,
   };
 }
 

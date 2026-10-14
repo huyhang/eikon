@@ -55,6 +55,11 @@ export class Database {
     }
   }
 
+  /** Writes a compact, consistent copy of the database to `file` (which must not exist). */
+  backupTo(file: string): void {
+    this.db.prepare('VACUUM INTO ?').run(file);
+  }
+
   close(): void {
     this.db.close();
   }

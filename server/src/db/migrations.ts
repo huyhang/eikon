@@ -89,4 +89,39 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX image_embeddings_model ON image_embeddings (model);
   `,
+  // 3: tag aliases and implications, rating overrides, the tag review queue.
+  `
+  CREATE TABLE tag_aliases (
+    alias  TEXT PRIMARY KEY,
+    tag_id INTEGER NOT NULL REFERENCES tags (id) ON DELETE CASCADE
+  );
+  CREATE INDEX tag_aliases_tag ON tag_aliases (tag_id);
+
+  -- tag_id implies implied_tag_id: every image with the first also counts as having the second.
+  CREATE TABLE tag_implications (
+    tag_id         INTEGER NOT NULL REFERENCES tags (id) ON DELETE CASCADE,
+    implied_tag_id INTEGER NOT NULL REFERENCES tags (id) ON DELETE CASCADE,
+    PRIMARY KEY (tag_id, implied_tag_id),
+    CHECK (tag_id <> implied_tag_id)
+  ) WITHOUT ROWID;
+  CREATE INDEX tag_implications_implied ON tag_implications (implied_tag_id);
+
+  -- 'implied' rows are derived from implications and recomputed, never edited directly.
+  CREATE TABLE image_tags_v3 (
+    image_id   INTEGER NOT NULL REFERENCES images (id) ON DELETE CASCADE,
+    tag_id     INTEGER NOT NULL REFERENCES tags (id) ON DELETE CASCADE,
+    source     TEXT NOT NULL CHECK (source IN ('auto', 'manual', 'removed', 'implied')),
+    confidence REAL,
+    PRIMARY KEY (image_id, tag_id)
+  ) WITHOUT ROWID;
+  INSERT INTO image_tags_v3 (image_id, tag_id, source, confidence)
+    SELECT image_id, tag_id, source, confidence FROM image_tags;
+  DROP TABLE image_tags;
+  ALTER TABLE image_tags_v3 RENAME TO image_tags;
+  CREATE INDEX image_tags_tag ON image_tags (tag_id, image_id);
+
+  ALTER TABLE images ADD COLUMN rating_override INTEGER;
+  ALTER TABLE images ADD COLUMN reviewed_at INTEGER;
+  CREATE INDEX images_review ON images (tag_status, reviewed_at, tagged_at);
+  `,
 ];

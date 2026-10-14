@@ -18,6 +18,8 @@ describe('migrations', () => {
     old.exec('PRAGMA user_version = 1');
     old.exec(`INSERT INTO images (hash, width, height, format, size_bytes, placeholder, added_at)
               VALUES ('h1', 10, 20, 'png', 5, 'AAAA', 1)`);
+    old.exec("INSERT INTO tags (name, category) VALUES ('sky', 'general')");
+    old.exec("INSERT INTO image_tags (image_id, tag_id, source, confidence) VALUES (1, 1, 'manual', NULL)");
     old.close();
 
     Database.open(file).close();
@@ -28,9 +30,13 @@ describe('migrations', () => {
     );
     expect(columnsOf(upgraded, 'images')).toEqual(expect.arrayContaining(['phash', 'dup_of']));
     expect(columnsOf(upgraded, 'image_embeddings')).toEqual(['image_id', 'model', 'vector']);
+    expect(columnsOf(upgraded, 'images')).toEqual(expect.arrayContaining(['rating_override', 'reviewed_at']));
+    expect(columnsOf(upgraded, 'tag_aliases')).toEqual(['alias', 'tag_id']);
+    expect(columnsOf(upgraded, 'tag_implications')).toEqual(['tag_id', 'implied_tag_id']);
     expect(upgraded.prepare('SELECT hash, phash, dup_of FROM images').all()).toEqual([
       { hash: 'h1', phash: null, dup_of: null },
     ]);
+    expect(upgraded.prepare('SELECT source FROM image_tags').all()).toEqual([{ source: 'manual' }]);
     upgraded.close();
   });
 

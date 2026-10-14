@@ -30,6 +30,8 @@ export interface ImageRecord extends TileRow {
   size_bytes: number;
   added_at: number;
   tag_status: TagStatus;
+  rating_override: number | null;
+  reviewed_at: number | null;
 }
 
 export class ImageRepository {
@@ -62,7 +64,8 @@ export class ImageRepository {
 
   get(id: number): ImageRecord | undefined {
     return this.db.get<ImageRecord>(
-      `SELECT ${TILE_COLUMNS}, i.hash, i.format, i.animated, i.size_bytes, i.added_at, i.tag_status
+      `SELECT ${TILE_COLUMNS}, i.hash, i.format, i.animated, i.size_bytes, i.added_at, i.tag_status,
+         i.rating_override, i.reviewed_at
        FROM images i WHERE i.id = ?`,
       id,
     );

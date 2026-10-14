@@ -1,5 +1,14 @@
+import { createReadStream } from 'node:fs';
+import { Readable } from 'node:stream';
 import type { FastifyInstance } from 'fastify';
-import type { FailedImagesResponse, Settings, StatusResponse } from '@eikon/shared';
+import type {
+  BackupInfo,
+  BackupListResponse,
+  FailedImagesResponse,
+  Settings,
+  StatusResponse,
+} from '@eikon/shared';
+import { curationExportChunks } from '../../db/exportRepository';
 import { sanitizeSettings } from '../../db/settingsRepository';
 import type { AppDeps } from '../deps';
 
@@ -37,4 +46,37 @@ export function registerSystemRoutes(app: FastifyInstance, deps: AppDeps): void 
   app.put<{ Body: unknown }>('/api/settings', async (request): Promise<Settings> =>
     repos.settings.update(sanitizeSettings(request.body)),
   );
+
+  app.get('/api/backups', async (): Promise<BackupListResponse> => ({ backups: deps.backups.list() }));
+
+  app.post('/api/backups', async (_request, reply) => {
+    const backup: BackupInfo = deps.backups.backupNow();
+    return reply.code(201).send(backup);
+  });
+
+  app.get<{ Params: { name: string } }>('/api/backups/:name', async (request, reply) => {
+    const file = deps.backups.pathOf(request.params.name);
+    if (!file) return reply.code(404).send({ error: 'not found' });
+    return reply
+      .header('content-disposition', `attachment; filename="${request.params.name}"`)
+      .type('application/vnd.sqlite3')
+      .send(createReadStream(file));
+  });
+
+  app.get('/api/export', async (_request, reply) => {
+    const now = deps.clock.now();
+    const chunks = curationExportChunks(
+      {
+        images: () => repos.exports.images(),
+        tags: () => repos.exports.tags(),
+        savedSearches: () => repos.savedSearches.list(),
+      },
+      now,
+    );
+    const day = new Date(now).toISOString().slice(0, 10);
+    return reply
+      .header('content-disposition', `attachment; filename="eikon-curation-${day}.json"`)
+      .type('application/json; charset=utf-8')
+      .send(Readable.from(chunks));
+  });
 }

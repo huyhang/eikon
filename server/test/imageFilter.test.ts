@@ -35,10 +35,10 @@ describe('imageConditions', () => {
     patterns.forEach((pattern, i) => expect(conditions[i]?.text).toMatch(pattern));
   });
 
-  it('binds tag names with their thresholds in order', () => {
+  it('binds tag names (also as aliases) with their thresholds in order', () => {
     const [include, exclude] = imageConditions({ tags: ['sky'], exclude: ['night'] }, thresholds);
-    expect(include?.params).toEqual(['sky', 0.85, 0.35]);
-    expect(exclude?.params).toEqual(['night', 0.85, 0.35]);
+    expect(include?.params).toEqual(['sky', 'sky', 0.85, 0.35]);
+    expect(exclude?.params).toEqual(['night', 'night', 0.85, 0.35]);
   });
 });
 
