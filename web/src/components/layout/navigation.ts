@@ -6,19 +6,27 @@ export interface NavItem {
   icon: IconName;
 }
 
-export const PRIMARY_NAV: NavItem[] = [
-  { to: '/', label: 'Library', icon: 'library' },
-  { to: '/illustrators', label: 'Illustrators', icon: 'illustrators' },
-  { to: '/collections', label: 'Collections', icon: 'collections' },
-  { to: '/search', label: 'Search', icon: 'search' },
-];
+const NAV = {
+  library: { to: '/', label: 'Library', icon: 'library' },
+  illustrators: { to: '/illustrators', label: 'Illustrators', icon: 'illustrators' },
+  collections: { to: '/collections', label: 'Collections', icon: 'collections' },
+  search: { to: '/search', label: 'Search', icon: 'search' },
+  saved: { to: '/saved', label: 'Saved', icon: 'bookmark' },
+  favorites: { to: '/favorites', label: 'Favorites', icon: 'heart' },
+  review: { to: '/review', label: 'Review Tags', icon: 'checkCircle' },
+} satisfies Record<string, NavItem>;
 
+/** Phone tab bar: favourites and pinned searches live together under Saved. */
+export const PRIMARY_NAV: NavItem[] = [NAV.library, NAV.illustrators, NAV.collections, NAV.search, NAV.saved];
+
+/** Wide-screen sidebar: pinned searches have their own section, so Favorites stands alone. */
 export const SIDEBAR_NAV: NavItem[] = [
-  { to: '/', label: 'Library', icon: 'library' },
-  { to: '/illustrators', label: 'Illustrators', icon: 'illustrators' },
-  { to: '/collections', label: 'Collections', icon: 'collections' },
-  { to: '/favorites', label: 'Favorites', icon: 'heart' },
-  { to: '/search', label: 'Search', icon: 'search' },
+  NAV.library,
+  NAV.illustrators,
+  NAV.collections,
+  NAV.favorites,
+  NAV.search,
+  NAV.review,
 ];
 
 export function groupPath(kind: 'illustrator' | 'collection', id: number): string {

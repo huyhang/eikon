@@ -38,6 +38,8 @@ export interface TagWorkerOptions {
 
 /** Where embeddings go and which images still need one (implemented by the similarity layer). */
 export interface EmbeddingSink {
+  /** The model whose stored vectors similar-image search uses, even while gpubox is off. */
+  currentModel(): string | null;
   setModel(model: string | null): void;
   save(imageId: number, embedding: Embedding): void;
   missing(model: string, limit: number): number[];
@@ -82,15 +84,17 @@ export class TagWorker {
   }
 
   status(): TaggingStatus {
-    const pending = this.embedModel
-      ? Math.max(0, this.deps.embeddings.countMissing(this.embedModel) - this.backfill.skippedCount)
+    const embedModel = this.embedModel ?? this.deps.embeddings.currentModel();
+    const pending = embedModel
+      ? Math.max(0, this.deps.embeddings.countMissing(embedModel) - this.backfill.skippedCount)
       : 0;
     return {
       ...this.deps.queue.counts(),
       taggerOnline: this.online,
       taggerModel: this.model,
-      embedModel: this.embedModel,
+      embedModel,
       embeddingsPending: pending,
+      describeAvailable: this.online && this.embedModel !== null,
     };
   }
 

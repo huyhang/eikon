@@ -54,7 +54,7 @@ export function SearchBar({ state, dispatch, placeholder = 'Search tags', autoFo
       </AnimatePresence>
       <TagInput
         aria-label="Add a tag to the search"
-        placeholder={chips.length ? 'Add tag…  (−tag to exclude)' : placeholder}
+        placeholder={chips.length ? 'Add tag or −tag' : placeholder}
         hide={[...state.include, ...state.exclude]}
         autoFocus={autoFocus}
         onSubmit={(text) => dispatch({ type: 'add', tag: text })}

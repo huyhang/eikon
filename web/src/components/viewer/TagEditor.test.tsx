@@ -32,7 +32,7 @@ describe('TagEditor', () => {
 
   it('removes a tag in edit mode', async () => {
     const { api } = setup(true);
-    fireEvent.click(screen.getByRole('button', { name: 'Remove blue_sky' }));
+    fireEvent.click(screen.getByRole('button', { name: /Remove blue_sky/ }));
     await waitFor(() => expect(api.removeTag).toHaveBeenCalledWith(1, 'blue_sky'));
   });
 

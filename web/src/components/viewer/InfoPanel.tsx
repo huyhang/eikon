@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import { motion, type PanInfo } from 'motion/react';
-import type { ImageDetail } from '@eikon/shared';
+import { RATINGS, thumbUrl, type ImageDetail, type Rating } from '@eikon/shared';
+import { useSetRating, useSimilarImages } from '../../api/hooks';
 import { formatBytes, formatDate, formatDimensions } from '../../core/format';
 import { RATING_LABELS } from '../../core/safeMode';
 import { Spinner } from '../common/Controls';
@@ -17,6 +18,8 @@ interface InfoPanelProps {
   onClose: () => void;
   onSearch: (tag: string) => void;
   onAddToSearch: (tag: string) => void;
+  /** Shows a "More like this" strip when similar-image search is available. */
+  similar: boolean;
 }
 
 export const INFO_PANEL_WIDTH = 380;
@@ -83,6 +86,7 @@ function InfoContent({
   onEditingChange,
   onSearch,
   onAddToSearch,
+  similar,
 }: { detail: ImageDetail } & Omit<InfoPanelProps, 'detail' | 'wide' | 'onClose'>) {
   const illustrators = detail.files.filter((f) => f.group.kind === 'illustrator').map((f) => f.group);
   const collections = detail.files.filter((f) => f.group.kind === 'collection').map((f) => f.group);
@@ -122,6 +126,8 @@ function InfoContent({
         onAddToSearch={onAddToSearch}
       />
 
+      {similar && <MoreLikeThis imageId={detail.id} />}
+
       <section>
         <h3 className={styles.sectionTitle}>Details</h3>
         <dl className={styles.details}>
@@ -134,12 +140,10 @@ function InfoContent({
             {detail.format.toUpperCase()}
             {detail.animated ? ' · animated' : ''}
           </dd>
-          {detail.rating && (
-            <>
-              <dt>Rating</dt>
-              <dd>{RATING_LABELS[detail.rating]}</dd>
-            </>
-          )}
+          <dt>Rating</dt>
+          <dd>
+            <RatingControl detail={detail} />
+          </dd>
           {detail.files.map((f) => (
             <FileRow key={f.path} path={f.path} />
           ))}
@@ -157,5 +161,63 @@ function FileRow({ path }: { path: string }) {
         {path}
       </dd>
     </>
+  );
+}
+
+const AUTO = 'auto';
+
+/** The tagger's rating, or the user's override; the override survives re-tagging and drives safe mode. */
+function RatingControl({ detail }: { detail: ImageDetail }) {
+  const setRating = useSetRating(detail.id);
+  const automatic =
+    detail.rating && !detail.ratingOverridden ? `Automatic (${RATING_LABELS[detail.rating]})` : 'Automatic';
+  return (
+    <select
+      className={styles.ratingSelect}
+      value={detail.ratingOverridden && detail.rating ? detail.rating : AUTO}
+      onChange={(e) => setRating.mutate(e.target.value === AUTO ? null : (e.target.value as Rating))}
+      disabled={setRating.isPending}
+      aria-label="Rating"
+    >
+      <option value={AUTO}>{automatic}</option>
+      {RATINGS.map((r) => (
+        <option key={r} value={r}>
+          {RATING_LABELS[r]}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+const SIMILAR_STRIP = 8;
+const SKELETON = [0, 1, 2, 3];
+
+/** A few look-alikes; each opens inside the full "more like this" results. */
+function MoreLikeThis({ imageId }: { imageId: number }) {
+  const similar = useSimilarImages(imageId, SIMILAR_STRIP, true);
+  const tiles = similar.data?.tiles ?? [];
+  if (similar.isError || (similar.data && tiles.length === 0)) return null;
+  return (
+    <section>
+      <header className={styles.sectionHeader}>
+        <h3 className={styles.sectionTitle}>More like this</h3>
+        <Link to={`/search?like=${imageId}`} className={styles.seeAll}>
+          See all
+        </Link>
+      </header>
+      <div className={styles.similarStrip}>
+        {similar.data
+          ? tiles.map((tile) => (
+              <Link
+                key={tile.id}
+                to={`/search?like=${imageId}&img=${tile.id}`}
+                className={styles.similarTile}
+              >
+                <img src={thumbUrl(tile.id, 'sm')} alt="" loading="lazy" />
+              </Link>
+            ))
+          : SKELETON.map((position) => <span key={position} className={styles.similarTile} />)}
+      </div>
+    </section>
   );
 }

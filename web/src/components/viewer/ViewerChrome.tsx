@@ -75,6 +75,7 @@ export interface ToolbarProps {
   onToggleFavorite: () => void;
   onToggleInfo: () => void;
   onEdit: () => void;
+  onFindSimilar?: () => void;
 }
 
 export function Toolbar(props: ToolbarProps) {
@@ -90,6 +91,9 @@ export function Toolbar(props: ToolbarProps) {
       />
       <ToolbarButton icon="info" label="Info" onClick={props.onToggleInfo} active={props.infoOpen} />
       <ToolbarButton icon="pencil" label="Edit tags" onClick={props.onEdit} active={props.editing} />
+      {props.onFindSimilar && (
+        <ToolbarButton icon="similar" label="More like this" onClick={props.onFindSimilar} />
+      )}
     </motion.nav>
   );
 }
@@ -101,7 +105,7 @@ function ToolbarButton({
   active,
   disabled,
 }: {
-  icon: 'share' | 'heart' | 'info' | 'pencil';
+  icon: 'share' | 'heart' | 'info' | 'pencil' | 'similar';
   label: string;
   onClick: () => void;
   active?: boolean;

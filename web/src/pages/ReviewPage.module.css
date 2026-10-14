@@ -1,0 +1,9 @@
+.page {
+  padding-bottom: 40px;
+}
+
+.loading {
+  display: grid;
+  place-items: center;
+  min-height: 240px;
+}

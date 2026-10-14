@@ -15,10 +15,20 @@ interface PageHeaderProps {
   children?: ReactNode;
   /** Visual above the title (e.g. a cover mosaic on group pages). */
   hero?: ReactNode;
+  /** What the frosted bar says once the large title has scrolled away (defaults to the title). */
+  collapsedTitle?: string;
 }
 
 /** Large title that collapses into a frosted bar as the page scrolls, like iOS. */
-export function PageHeader({ title, subtitle, back, actions, children, hero }: PageHeaderProps) {
+export function PageHeader({
+  title,
+  subtitle,
+  back,
+  actions,
+  children,
+  hero,
+  collapsedTitle,
+}: PageHeaderProps) {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const collapsed = useCollapsed(titleRef);
   const navigate = useNavigate();
@@ -41,7 +51,7 @@ export function PageHeader({ title, subtitle, back, actions, children, hero }: P
           )}
         </div>
         <div className={styles.barTitle} aria-hidden={!collapsed}>
-          {title}
+          {collapsedTitle ?? title}
         </div>
         <div className={clsx(styles.barSide, styles.barActions)}>
           {actions}

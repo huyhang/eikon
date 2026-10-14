@@ -8,6 +8,8 @@ export interface Dependencies {
   now: () => number;
   /** Uniform in [0, 1); injected so shuffles are testable. */
   random: () => number;
+  /** Asks the user to confirm a consequential action (window.confirm in the browser). */
+  confirm: (message: string) => boolean;
 }
 
 const DependenciesContext = createContext<Dependencies | null>(null);

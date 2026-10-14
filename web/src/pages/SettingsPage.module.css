@@ -95,3 +95,19 @@
   color: var(--danger);
   font-size: 14px;
 }
+
+.linkRow {
+  display: block;
+  color: inherit;
+}
+
+.linkRow:hover {
+  background: var(--fill-3);
+}
+
+.row + .linkRow,
+.linkRow + .linkRow,
+.linkRow + .row,
+.actions + .linkRow {
+  border-top: 0.5px solid var(--separator);
+}

@@ -1,11 +1,11 @@
 import { useState, type ReactNode } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router';
+import { Link, NavLink } from 'react-router';
 import clsx from 'clsx';
 import type { GroupKind } from '@eikon/shared';
-import { useDeleteSavedSearch, useGroups, useSavedSearches } from '../../api/hooks';
+import { useGroups, useSavedSearches, useStatus } from '../../api/hooks';
 import { formatCompact } from '../../core/format';
-import { savedQueryToSearch, searchToParams } from '../../core/searchState';
 import { Icon } from '../common/Icon';
+import { PinnedSearchList } from '../search/PinnedSearchList';
 import { LogoMark } from './Logo';
 import { groupPath, SIDEBAR_NAV } from './navigation';
 import { SafeModeToggle } from './SafeModeToggle';
@@ -31,6 +31,7 @@ export function Sidebar() {
               <NavLink to={item.to} end={item.to === '/'} className={navClass}>
                 <Icon name={item.icon} size={19} />
                 <span>{item.label}</span>
+                {item.to === '/review' && <ReviewBadge />}
               </NavLink>
             </li>
           ))}
@@ -51,6 +52,11 @@ export function Sidebar() {
       </div>
     </aside>
   );
+}
+
+function ReviewBadge() {
+  const pending = useStatus().data?.review.pending ?? 0;
+  return pending > 0 ? <span className={styles.count}>{formatCompact(pending)}</span> : null;
 }
 
 function Section({
@@ -86,33 +92,10 @@ function Section({
 
 function PinnedSearches() {
   const { data } = useSavedSearches();
-  const remove = useDeleteSavedSearch();
-  const navigate = useNavigate();
   if (!data?.length) return null;
   return (
     <Section title="Pinned">
-      <ul className={styles.list}>
-        {data.map((saved) => (
-          <li key={saved.id} className={styles.pinned}>
-            <button
-              type="button"
-              className={styles.link}
-              onClick={() => navigate(`/search?${searchToParams(savedQueryToSearch(saved.query))}`)}
-            >
-              <span className={styles.hash}>#</span>
-              <span className={styles.truncate}>{saved.name}</span>
-            </button>
-            <button
-              type="button"
-              className={styles.unpin}
-              aria-label={`Unpin ${saved.name}`}
-              onClick={() => remove.mutate(saved.id)}
-            >
-              <Icon name="close" size={12} strokeWidth={2.4} />
-            </button>
-          </li>
-        ))}
-      </ul>
+      <PinnedSearchList variant="compact" />
     </Section>
   );
 }

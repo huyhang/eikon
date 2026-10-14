@@ -40,6 +40,7 @@ function buildTagWorker(
   return new TagWorker({
     queue: repos.tagQueue,
     embeddings: {
+      currentModel: () => similarity.model,
       setModel: (model) => similarity.setModel(model),
       save: (id, embedding) => similarity.save(id, embedding),
       missing: (model, limit) => repos.embeddings.missing(model, limit),

@@ -78,6 +78,7 @@ async function setup(count = 2) {
   const worker = new TagWorker({
     queue: repos.tagQueue,
     embeddings: {
+      currentModel: () => similarity.model,
       setModel: (model) => similarity.setModel(model),
       save: (id, embedding) => similarity.save(id, embedding),
       missing: (model, limit) => repos.embeddings.missing(model, limit),
@@ -146,7 +147,14 @@ describe('TagWorker embeddings', () => {
     expect(await worker.runOnce()).toBe('worked');
     expect(repos.embeddings.countMissing('clip')).toBe(0);
     expect(similarity.similarTo(ids[0]!, 5)?.map((r) => r.id)).toEqual([ids[1]]);
-    expect(worker.status()).toMatchObject({ embedModel: 'clip', embeddingsPending: 0 });
+    expect(worker.status()).toMatchObject({
+      embedModel: 'clip',
+      embeddingsPending: 0,
+      describeAvailable: true,
+    });
+    tagger.online = false;
+    await worker.runOnce();
+    expect(worker.status()).toMatchObject({ embedModel: 'clip', describeAvailable: false });
   });
 
   it('backfills embeddings for already-tagged images once the queue is empty', async () => {

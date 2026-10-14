@@ -52,7 +52,9 @@ export const idleStatus: StatusResponse = {
     taggerModel: 'wd-eva02-large-tagger-v3',
     embedModel: 'clip-vit-large-patch14',
     embeddingsPending: 0,
+    describeAvailable: true,
   },
+  review: { pending: 0 },
 };
 
 /** An AuthStatus for an open (no passcode) server, with overrides. */

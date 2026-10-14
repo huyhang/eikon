@@ -18,6 +18,7 @@ export function registerSystemRoutes(app: FastifyInstance, deps: AppDeps): void 
   app.get('/api/status', async (): Promise<StatusResponse> => ({
     scan: deps.scanner.status(),
     tagging: deps.worker.status(),
+    review: { pending: repos.curation.reviewQueue(0).total },
   }));
 
   app.post('/api/scan', async (_request, reply) => {

@@ -16,36 +16,6 @@
   gap: 10px;
 }
 
-.groupFilter {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 32px;
-  padding: 0 10px;
-  border-radius: 10px;
-  background: var(--fill-3);
-  font-size: 13px;
-  color: var(--text-2);
-}
-
-.groupFilter select {
-  appearance: none;
-  border: 0;
-  background: none;
-  outline: none;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  padding-right: 4px;
-  max-width: 180px;
-  cursor: pointer;
-}
-
-.groupFilter svg {
-  pointer-events: none;
-}
-
 .count {
   margin-left: auto;
   font-size: 14px;

@@ -1,8 +1,7 @@
 import { Link } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { useHome, useImages } from '../api/hooks';
+import { useHome, useStatus } from '../api/hooks';
 import { formatCount, pluralize } from '../core/format';
-import { Spinner } from '../components/common/Controls';
 import { FirstRun } from '../components/common/FirstRun';
 import { Icon } from '../components/common/Icon';
 import { Section } from '../components/common/Section';
@@ -15,7 +14,7 @@ import styles from './LibraryPage.module.css';
 
 export function LibraryPage() {
   const home = useHome();
-  const all = useImages({ sort: 'newest' }, (home.data?.totals.images ?? 0) > 0);
+  const reviewPending = useStatus().data?.review.pending ?? 0;
   const client = useQueryClient();
 
   if (home.isPending) return <PageLoading />;
@@ -39,8 +38,14 @@ export function LibraryPage() {
           </Link>
           <Link to="/search" className={styles.quickLink}>
             <Icon name="search" size={17} />
-            Search tags
+            Search
           </Link>
+          {reviewPending > 0 && (
+            <Link to="/review" className={styles.quickLink}>
+              <Icon name="checkCircle" size={17} />
+              Review {formatCount(reviewPending)}
+            </Link>
+          )}
         </div>
       </PageHeader>
 
@@ -90,19 +95,11 @@ export function LibraryPage() {
         </Section>
       )}
 
-      <Section
-        flush
-        title="All Images"
-        action={<span className={styles.count}>{formatCount(totals.images)}</span>}
-      >
-        {all.data ? (
-          <ImageCollection tiles={all.data.tiles} contextKey="all" primary />
-        ) : (
-          <div className={styles.loading}>
-            <Spinner />
-          </div>
-        )}
-      </Section>
+      <Link to="/all" className={styles.allImages}>
+        <span className={styles.allTitle}>All Images</span>
+        <span className={styles.count}>{formatCount(totals.images)}</span>
+        <Icon name="chevronRight" size={18} strokeWidth={2.4} />
+      </Link>
     </div>
   );
 }

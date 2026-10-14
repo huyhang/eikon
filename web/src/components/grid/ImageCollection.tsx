@@ -2,6 +2,7 @@ import { useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import type { ImageTile } from '@eikon/shared';
 import { usePrefs } from '../../context/Prefs';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { clampDensity, defaultDensity } from '../../core/gestures';
 import { EMPTY_SEARCH, searchFromParams, searchReducer, searchToParams } from '../../core/searchState';
 import { Viewer } from '../viewer/Viewer';
@@ -38,6 +39,7 @@ export function ImageCollection({
   const viewer = useViewerState(contextKey, primary);
   const navigate = useNavigate();
   const location = useLocation();
+  const capabilities = useCapabilities();
 
   const openIndex = viewer.openId === null ? -1 : tiles.findIndex((t) => t.id === viewer.openId);
 
@@ -54,6 +56,8 @@ export function ImageCollection({
 
   const onSearch = (tag: string) =>
     navigate(`/search?${searchToParams(searchReducer(EMPTY_SEARCH, { type: 'add', tag }))}`);
+
+  const onFindSimilar = (id: number) => navigate(`/search?${searchToParams({ ...EMPTY_SEARCH, like: id })}`);
 
   const onAddToSearch = (tag: string) => {
     const current =
@@ -88,6 +92,7 @@ export function ImageCollection({
           onClose={viewer.close}
           onSearch={onSearch}
           onAddToSearch={onAddToSearch}
+          onFindSimilar={capabilities.similar ? onFindSimilar : undefined}
         />
       )}
     </div>

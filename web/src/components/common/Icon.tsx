@@ -39,11 +39,24 @@ const PATHS = {
     'M3.5 7h3.3c1.6 0 3 .8 3.9 2.1l2.6 3.8c.9 1.3 2.3 2.1 3.9 2.1h3.3M3.5 17h3.3c1.6 0 3-.8 3.9-2.1M13.3 9.1c.9-1.3 2.3-2.1 3.9-2.1h3.3M18 4.5 20.5 7 18 9.5M18 14.5l2.5 2.5-2.5 2.5',
   wifiOff:
     'M3 3l18 18M8.5 16a5 5 0 0 1 7 0M5 12.5a10 10 0 0 1 4-2.3M14.6 10.1A10 10 0 0 1 19 12.5M2 9a14.5 14.5 0 0 1 4.3-2.7M10.7 5.1A14.5 14.5 0 0 1 22 9M12 19.5v.1',
+  similar:
+    'M9 4.5h8.5A2 2 0 0 1 19.5 6.5V15M6.5 8h8A2 2 0 0 1 16.5 10v8a2 2 0 0 1-2 2h-8a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2Z',
+  check: 'M5 12.5l4.5 4.5L19 7.5',
+  checkCircle: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm-4-9 2.8 2.8L16.5 9',
+  tag: 'M3.5 12.6V5a1.5 1.5 0 0 1 1.5-1.5h7.6L20.5 11.4a1.5 1.5 0 0 1 0 2.1l-7 7a1.5 1.5 0 0 1-2.1 0L3.5 12.6ZM8 8.1v.1',
+  play: 'M7 5.2v13.6a.8.8 0 0 0 1.2.7l11-6.8a.8.8 0 0 0 0-1.4l-11-6.8A.8.8 0 0 0 7 5.2Z',
+  pause: 'M8 5v14M16 5v14',
+  bookmark: 'M6.5 4.5h11v15.5L12 16l-5.5 4V4.5Z',
+  copies:
+    'M8 8V5.5A1.5 1.5 0 0 1 9.5 4h9A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H16M5.5 8h9A1.5 1.5 0 0 1 16 9.5v9a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 4 18.5v-9A1.5 1.5 0 0 1 5.5 8Z',
+  command:
+    'M9 9V6.5A2.5 2.5 0 1 0 6.5 9H9Zm0 0h6m-6 0v6m6-6V6.5A2.5 2.5 0 1 1 17.5 9H15Zm0 0v6m0 0h2.5a2.5 2.5 0 1 1-2.5 2.5V15Zm0 0H9m0 0v2.5A2.5 2.5 0 1 1 6.5 15H9Z',
+  split: 'M4.5 6.5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-11ZM10 4.5v15',
 } as const;
 
 export type IconName = keyof typeof PATHS;
 
-const FILLED: Partial<Record<IconName, true>> = {};
+const FILLED: Partial<Record<IconName, true>> = { play: true };
 
 interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'name'> {
   name: IconName;

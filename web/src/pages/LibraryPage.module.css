@@ -53,3 +53,19 @@
   place-items: center;
   min-height: 200px;
 }
+
+.allImages {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px var(--gutter) 0;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--bg-grouped);
+  color: var(--text);
+}
+
+.allTitle {
+  flex: 1;
+  font: 700 20px/1.2 var(--font-display);
+}

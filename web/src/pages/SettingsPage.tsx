@@ -1,7 +1,12 @@
 import { useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { RATINGS, type Rating } from '@eikon/shared';
+import type { AuthStatus } from '@eikon/shared';
+import { Link } from 'react-router';
+import { backupDownloadUrl, EXPORT_URL } from '../api/client';
 import {
+  useBackups,
+  useCreateBackup,
   useRetagAll,
   useRetryFailed,
   useScan,
@@ -12,11 +17,12 @@ import {
 import { queryKeys } from '../api/queryKeys';
 import { useDependencies } from '../context/Dependencies';
 import { usePrefs } from '../context/Prefs';
-import { formatCount, formatPercent, formatRelative } from '../core/format';
+import { formatBytes, formatCount, formatPercent, formatRelative } from '../core/format';
 import { DENSITY_ROW_HEIGHTS, defaultDensity } from '../core/gestures';
 import { hiddenRatings, RATING_LABELS } from '../core/safeMode';
 import type { ThemePref } from '../services/prefs';
 import { Button, Segmented, Switch } from '../components/common/Controls';
+import { Icon } from '../components/common/Icon';
 import { PageHeader } from '../components/layout/PageHeader';
 import styles from './SettingsPage.module.css';
 
@@ -40,6 +46,7 @@ export function SettingsPage() {
         <SafeModeGroup />
         <TaggingGroup />
         <LibraryGroup />
+        <BackupGroup />
         <AccountGroup />
       </div>
     </div>
@@ -158,10 +165,11 @@ function TaggingGroup() {
   const status = useStatus();
   const retagAll = useRetagAll();
   const retry = useRetryFailed();
+  const { confirm } = useDependencies();
   const tagging = status.data?.tagging;
 
   const confirmRetag = () => {
-    if (window.confirm('Re-tag every image? Your manual tag edits are kept.')) retagAll.mutate();
+    if (confirm('Re-tag every image? Your manual tag edits are kept.')) retagAll.mutate();
   };
 
   return (
@@ -181,6 +189,14 @@ function TaggingGroup() {
           </span>
         )}
       </Row>
+      <Row
+        label="Similar images"
+        detail={
+          tagging?.embedModel
+            ? `${tagging.embedModel}${tagging.embeddingsPending ? ` · ${formatCount(tagging.embeddingsPending)} waiting` : ''}`
+            : 'Off — gpubox has no embedding model'
+        }
+      />
       {settings.data && (
         <>
           <ThresholdSlider
@@ -212,8 +228,11 @@ function TaggingGroup() {
 function LibraryGroup() {
   const status = useStatus();
   const scan = useScan();
+  const settings = useSettings();
+  const update = useUpdateSettings();
   const { now } = useDependencies();
   const s = status.data?.scan;
+  const reviewPending = status.data?.review.pending ?? 0;
   const detail = !s
     ? undefined
     : s.phase !== 'idle'
@@ -233,25 +252,101 @@ function LibraryGroup() {
         </Button>
       </Row>
       {s?.lastError && <p className={styles.error}>{s.lastError}</p>}
+      {settings.data && (
+        <Row label="Hide smaller copies" detail="Show only the best copy of a picture in each grid">
+          <Switch
+            label="Hide smaller copies"
+            checked={settings.data.hideDuplicates}
+            onChange={(hideDuplicates) => update.mutate({ hideDuplicates })}
+          />
+        </Row>
+      )}
+      <LinkRow to="/duplicates" label="Duplicates" />
+      <LinkRow
+        to="/review"
+        label="Review tags"
+        detail={reviewPending ? `${formatCount(reviewPending)} waiting` : undefined}
+      />
+      <LinkRow to="/tags" label="Manage tags" detail="Rename, merge, aliases and implications" />
+    </Group>
+  );
+}
+
+function LinkRow({ to, label, detail }: { to: string; label: string; detail?: string }) {
+  return (
+    <Link to={to} className={styles.linkRow}>
+      <Row label={label} detail={detail}>
+        <Icon name="chevronRight" size={16} strokeWidth={2.4} />
+      </Row>
+    </Link>
+  );
+}
+
+function BackupGroup() {
+  const backups = useBackups();
+  const create = useCreateBackup();
+  const { now } = useDependencies();
+  const latest = backups.data?.[0];
+  return (
+    <Group
+      title="Backups & Export"
+      footer="Eikon backs up its database every night and keeps a week of copies in its data folder. The export holds every tag, favorite and rating you set, keyed by file content."
+    >
+      <Row
+        label="Database backups"
+        detail={latest ? `Last backup ${formatRelative(latest.createdAt, now())}` : 'No backup yet'}
+      >
+        <Button icon="refresh" onClick={() => create.mutate()} disabled={create.isPending}>
+          Back up now
+        </Button>
+      </Row>
+      {backups.data?.slice(0, 3).map((b) => (
+        <a key={b.name} href={backupDownloadUrl(b.name)} download className={styles.linkRow}>
+          <Row label={new Date(b.createdAt).toLocaleString()} detail={formatBytes(b.sizeBytes)}>
+            <Icon name="download" size={17} />
+          </Row>
+        </a>
+      ))}
+      <a href={EXPORT_URL} download className={styles.linkRow}>
+        <Row label="Export curation" detail="JSON: tags, favorites, ratings, aliases, saved searches">
+          <Icon name="download" size={17} />
+        </Row>
+      </a>
     </Group>
   );
 }
 
 function AccountGroup() {
-  const { api } = useDependencies();
+  const { api, confirm } = useDependencies();
   const client = useQueryClient();
-  const auth = client.getQueryData<{ required: boolean }>(queryKeys.authStatus);
+  const auth = client.getQueryData<AuthStatus>(queryKeys.authStatus);
   if (!auth?.required) return null;
-  const signOut = async () => {
-    await api.logout();
+  const leave = async (everywhere: boolean) => {
+    if (everywhere && !confirm('Sign out on every device? Each one will need the passcode again.')) return;
+    await (everywhere ? api.signOutEverywhere() : api.logout());
     client.clear();
     window.location.assign('/');
   };
+  if (auth.method === 'tailscale') {
+    return (
+      <Group
+        title="This device"
+        footer="Signed in by your Tailscale identity; remove the device from your tailnet to revoke it."
+      >
+        <Row label="Signed in as" detail={auth.user?.name ?? auth.user?.login}>
+          <span className={styles.online}>Tailscale</span>
+        </Row>
+      </Group>
+    );
+  }
   return (
     <Group title="This device">
       <div className={styles.actions}>
-        <Button variant="danger" icon="lock" onClick={() => void signOut()}>
+        <Button variant="danger" icon="lock" onClick={() => void leave(false)}>
           Sign out
+        </Button>
+        <Button icon="lock" onClick={() => void leave(true)}>
+          Sign out all devices
         </Button>
       </div>
     </Group>

@@ -114,38 +114,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.hash {
-  width: 19px;
-  text-align: center;
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.pinned {
-  position: relative;
-}
-
-.unpin {
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  color: var(--text-2);
-  background: var(--fill-2);
-  opacity: 0;
-  transition: opacity 140ms ease;
-}
-
-.pinned:hover .unpin,
-.unpin:focus-visible {
-  opacity: 1;
-}
-
 .more {
   color: var(--accent);
   font-size: 13px;

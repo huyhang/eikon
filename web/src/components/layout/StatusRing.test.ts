@@ -9,6 +9,7 @@ const status = (
 ): StatusResponse => ({
   scan: { ...idleStatus.scan, ...scan },
   tagging: { ...idleStatus.tagging, ...tagging },
+  review: idleStatus.review,
 });
 
 describe('ringState', () => {

@@ -331,15 +331,19 @@ export interface TaggingStatus {
   total: number;
   taggerOnline: boolean;
   taggerModel: string | null;
-  /** The embedding model used for similar/describe search, or null when there is none. */
+  /** The embedding model behind similar-image search (works from stored vectors even while gpubox is off). */
   embedModel: string | null;
   /** Tagged images still waiting for an embedding. */
   embeddingsPending: number;
+  /** Describe-in-words search needs gpubox online with an embedding model. */
+  describeAvailable: boolean;
 }
 
 export interface StatusResponse {
   scan: ScanStatus;
   tagging: TaggingStatus;
+  /** Tagged images whose tags the user hasn't confirmed yet. */
+  review: { pending: number };
 }
 
 export interface FailedImage {

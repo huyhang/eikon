@@ -97,6 +97,24 @@ describe('searchReducer', () => {
       to: state({ sort: 'oldest' }),
     },
     {
+      name: 'describing replaces similarity',
+      from: state({ like: 4, include: ['a'] }),
+      action: { type: 'setText', text: ' red sky ' },
+      to: state({ text: 'red sky', include: ['a'] }),
+    },
+    {
+      name: 'similarity replaces describing',
+      from: state({ text: 'red sky' }),
+      action: { type: 'setLike', like: 9 },
+      to: state({ like: 9 }),
+    },
+    {
+      name: 'empty text clears ranking',
+      from: state({ text: 'red sky' }),
+      action: { type: 'setText', text: '  ' },
+      to: state({}),
+    },
+    {
       name: 'clear keeps sort',
       from: state({ include: ['a'], group: 1, sort: 'random' }),
       action: { type: 'clear' },
@@ -113,6 +131,8 @@ describe('URL encoding', () => {
     { name: 'tags', value: state({ include: ['a', 'b'], exclude: ['c'] }), url: 't=a&t=b&x=c' },
     { name: 'group and sort', value: state({ group: 7, sort: 'oldest' }), url: 'in=7&sort=oldest' },
     { name: 'shuffle with seed', value: state({ sort: 'random', seed: 9 }), url: 'sort=random&seed=9' },
+    { name: 'describe', value: state({ text: 'red sky', include: ['cat'] }), url: 't=cat&q=red+sky' },
+    { name: 'similar', value: state({ like: 12 }), url: 'like=12' },
   ])('round-trips $name', ({ value, url }) => {
     expect(searchToParams(value).toString()).toBe(url);
     expect(searchFromParams(new URLSearchParams(url))).toEqual(value);
@@ -124,6 +144,8 @@ describe('URL encoding', () => {
     { name: 'duplicates', url: 't=a&t=a&x=a&x=b', expected: state({ include: ['a'], exclude: ['b'] }) },
     { name: 'seed without shuffle', url: 'sort=oldest&seed=3', expected: state({ sort: 'oldest' }) },
     { name: 'negative seed', url: 'sort=random&seed=-1', expected: state({ sort: 'random' }) },
+    { name: 'text wins over like', url: 'q=sea&like=3', expected: state({ text: 'sea' }) },
+    { name: 'blank text and bad like', url: 'q=%20&like=abc', expected: state({}) },
   ])('sanitises $name', ({ url, expected }) => {
     expect(searchFromParams(new URLSearchParams(url))).toEqual(expected);
   });
@@ -143,6 +165,13 @@ describe('derived values', () => {
       tags: ['a'],
       seed: 5,
     });
+  });
+
+  it.each([
+    { value: state({ text: 'sea', sort: 'oldest' }), expected: { sort: 'oldest', text: 'sea' } },
+    { value: state({ like: 3 }), expected: { sort: 'newest', like: 3 } },
+  ])('passes ranking to the image query: $expected', ({ value, expected }) => {
+    expect(searchToImageQuery(value)).toEqual(expected);
   });
 
   it('keys searches by criteria only', () => {
@@ -168,6 +197,8 @@ describe('derived values', () => {
       expected: 'blue sky · −night',
     },
     { value: state({ include: ['city'] }), group: 'Wlop', expected: 'city in Wlop' },
+    { value: state({ text: 'red sky', include: ['cat'] }), group: undefined, expected: '“red sky” · cat' },
+    { value: state({ like: 7 }), group: undefined, expected: 'Like #7' },
   ])('describes as "$expected"', ({ value, group, expected }) => {
     expect(describeSearch(value, group)).toBe(expected);
   });

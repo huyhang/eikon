@@ -13,11 +13,18 @@ interface RenderOptions {
   route?: string;
   now?: () => number;
   random?: () => number;
+  confirm?: (message: string) => boolean;
 }
 
 export function renderWithProviders(
   ui: ReactElement,
-  { api = createFakeApi(), route = '/', now = () => Date.now(), random = () => 0.5 }: RenderOptions = {},
+  {
+    api = createFakeApi(),
+    route = '/',
+    now = () => Date.now(),
+    random = () => 0.5,
+    confirm = () => true,
+  }: RenderOptions = {},
 ) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -25,7 +32,7 @@ export function renderWithProviders(
   const lockSignal = new LockSignal();
   const result = render(
     <AppProviders
-      dependencies={{ api, store: new MemoryStore(), now, random }}
+      dependencies={{ api, store: new MemoryStore(), now, random, confirm }}
       queryClient={queryClient}
       lockSignal={lockSignal}
     >

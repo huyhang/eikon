@@ -16,6 +16,7 @@ const dependencies = {
   store: new LocalStorageStore(window.localStorage),
   now: () => Date.now(),
   random: Math.random,
+  confirm: (message: string) => window.confirm(message),
 };
 const queryClient = new QueryClient({
   defaultOptions: {

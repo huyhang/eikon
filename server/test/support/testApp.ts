@@ -35,6 +35,7 @@ export async function createTestApp(options: TestAppOptions = {}) {
       taggerModel: 'fake',
       embedModel: 'clip',
       embeddingsPending: 0,
+      describeAvailable: true,
     }),
   };
   const embedText = vi.fn(async (_text: string) => ({

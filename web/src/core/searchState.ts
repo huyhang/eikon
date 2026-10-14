@@ -9,6 +9,10 @@ export interface SearchState {
   sort: ImageSort;
   /** Fixes the order of a shuffle, so paging back and forth keeps the same arrangement. */
   seed?: number;
+  /** Describe-in-words: rank images by how well they match this text (needs embeddings). */
+  text?: string;
+  /** More like this: rank images by similarity to this image (needs embeddings). */
+  like?: number;
 }
 
 export type SearchAction =
@@ -18,6 +22,8 @@ export type SearchAction =
   | { type: 'removeLast' }
   | { type: 'setGroup'; group: number | undefined }
   | { type: 'setSort'; sort: ImageSort; seed?: number }
+  | { type: 'setText'; text: string }
+  | { type: 'setLike'; like: number | undefined }
   | { type: 'clear' };
 
 export const EMPTY_SEARCH: SearchState = { include: [], exclude: [], sort: 'newest' };
@@ -65,6 +71,10 @@ export function searchReducer(state: SearchState, action: SearchAction): SearchS
       return action.group === undefined ? withoutGroup(state) : { ...state, group: action.group };
     case 'setSort':
       return withSort(state, action.sort, action.seed);
+    case 'setText':
+      return withRanking(state, action.text.trim() ? { text: action.text.trim() } : {});
+    case 'setLike':
+      return withRanking(state, action.like === undefined ? {} : { like: action.like });
     case 'clear':
       return { ...EMPTY_SEARCH, sort: state.sort };
   }
@@ -73,6 +83,12 @@ export function searchReducer(state: SearchState, action: SearchAction): SearchS
 function withSort(state: SearchState, sort: ImageSort, seed: number | undefined): SearchState {
   const { seed: _previous, ...rest } = state;
   return sort === 'random' && seed !== undefined ? { ...rest, sort, seed } : { ...rest, sort };
+}
+
+/** Text and image ranking are alternatives: setting one clears the other. */
+function withRanking(state: SearchState, ranking: Pick<SearchState, 'text' | 'like'>): SearchState {
+  const { text: _text, like: _like, ...rest } = state;
+  return { ...rest, ...ranking };
 }
 
 function withoutGroup(state: SearchState): SearchState {
@@ -93,7 +109,12 @@ export function chipsOf(state: SearchState): Chip[] {
 }
 
 export function hasCriteria(state: SearchState): boolean {
-  return state.include.length > 0 || state.exclude.length > 0 || state.group !== undefined;
+  return state.include.length > 0 || state.exclude.length > 0 || state.group !== undefined || isRanked(state);
+}
+
+/** Ranked by text or similarity rather than sorted. */
+export function isRanked(state: SearchState): boolean {
+  return state.text !== undefined || state.like !== undefined;
 }
 
 const SORTS: ReadonlySet<string> = new Set<ImageSort>(['newest', 'oldest', 'random']);
@@ -111,6 +132,8 @@ export function searchToParams(state: SearchState): URLSearchParams {
   if (state.group !== undefined) params.set('in', String(state.group));
   if (state.sort !== 'newest') params.set('sort', state.sort);
   if (state.sort === 'random' && state.seed !== undefined) params.set('seed', String(state.seed));
+  if (state.text !== undefined) params.set('q', state.text);
+  if (state.like !== undefined) params.set('like', String(state.like));
   return params;
 }
 
@@ -123,6 +146,10 @@ export function searchFromParams(params: URLSearchParams): SearchState {
   const state: SearchState = { include, exclude, sort: isSort(sortParam) ? sortParam : 'newest' };
   if (isPositiveInt(group)) state.group = group;
   if (state.sort === 'random' && params.has('seed') && Number.isInteger(seed) && seed >= 0) state.seed = seed;
+  const text = params.get('q')?.trim();
+  const like = Number(params.get('like'));
+  if (text) state.text = text;
+  else if (isPositiveInt(like)) state.like = like;
   return state;
 }
 
@@ -137,7 +164,9 @@ export function isSearchState(value: unknown): value is SearchState {
     isTagList(v.include) &&
     isTagList(v.exclude) &&
     isSort(v.sort) &&
-    (v.group === undefined || isPositiveInt(v.group))
+    (v.group === undefined || isPositiveInt(v.group)) &&
+    (v.text === undefined || typeof v.text === 'string') &&
+    (v.like === undefined || isPositiveInt(v.like))
   );
 }
 
@@ -147,6 +176,8 @@ export function searchToImageQuery(state: SearchState): ImageQuery {
   if (state.exclude.length) query.exclude = state.exclude;
   if (state.group !== undefined) query.group = state.group;
   if (state.sort === 'random' && state.seed !== undefined) query.seed = state.seed;
+  if (state.text !== undefined) query.text = state.text;
+  if (state.like !== undefined) query.like = state.like;
   return query;
 }
 
@@ -189,7 +220,9 @@ export function emptyResultMessage(
 }
 
 export function describeSearch(state: SearchState, groupName?: string): string {
-  const parts = [...state.include, ...state.exclude.map((t) => `−${t}`)].map((t) => t.replace(/_/g, ' '));
-  const label = parts.join(' · ') || 'Everything';
+  const tags = [...state.include, ...state.exclude.map((t) => `−${t}`)].map((t) => t.replace(/_/g, ' '));
+  const ranking =
+    state.text !== undefined ? [`“${state.text}”`] : state.like !== undefined ? [`Like #${state.like}`] : [];
+  const label = [...ranking, ...tags].join(' · ') || 'Everything';
   return groupName ? `${label} in ${groupName}` : label;
 }

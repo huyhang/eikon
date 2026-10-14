@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router';
 import { usePrefs } from '../../context/Prefs';
+import { SIDEBAR_QUERY, useMediaQuery } from '../../hooks/useMediaQuery';
 import { Icon } from '../common/Icon';
 import { Sidebar } from './Sidebar';
 import { TabBar } from './TabBar';
@@ -8,9 +9,11 @@ import styles from './AppShell.module.css';
 
 export function AppShell() {
   useScrollMemory();
+  // Phones never show the sidebar, so don't mount it (and its queries) there at all.
+  const wide = useMediaQuery(SIDEBAR_QUERY);
   return (
     <div className={styles.shell}>
-      <Sidebar />
+      {wide && <Sidebar />}
       <main className={styles.main}>
         <Outlet />
       </main>

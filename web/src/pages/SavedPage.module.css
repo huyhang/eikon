@@ -1,0 +1,24 @@
+.page {
+  padding-bottom: 40px;
+}
+
+.hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0 var(--gutter);
+  color: var(--text-2);
+  font-size: 15px;
+}
+
+.filter {
+  font-size: 15px;
+  color: var(--accent);
+}
+
+.loading {
+  display: grid;
+  place-items: center;
+  min-height: 200px;
+}

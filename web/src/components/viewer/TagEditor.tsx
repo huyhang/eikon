@@ -1,6 +1,7 @@
 import type { ImageDetail, ImageTag } from '@eikon/shared';
 import { useAddTag, useRemoveTag } from '../../api/hooks';
-import { groupTagsByCategory } from '../../core/tagGroups';
+import clsx from 'clsx';
+import { confidencePercent, groupTagsByCategory, isFaint, tagOrigin } from '../../core/tagGroups';
 import { useLongPress } from '../../hooks/useLongPress';
 import { Icon } from '../common/Icon';
 import { TagInput } from '../search/TagInput';
@@ -10,7 +11,8 @@ import styles from './TagEditor.module.css';
 interface TagEditorProps {
   detail: ImageDetail;
   editing: boolean;
-  onEditingChange: (editing: boolean) => void;
+  /** Absent when the editor is always in edit mode (the review queue). */
+  onEditingChange?: (editing: boolean) => void;
   /** Tap: start a new search for this tag. */
   onSearch: (tag: string) => void;
   /** Long-press: add this tag to the current search. */
@@ -26,9 +28,11 @@ export function TagEditor({ detail, editing, onEditingChange, onSearch, onAddToS
     <section className={styles.editor} aria-label="Tags">
       <header className={styles.header}>
         <h3>Tags</h3>
-        <button type="button" className={styles.editToggle} onClick={() => onEditingChange(!editing)}>
-          {editing ? 'Done' : 'Edit'}
-        </button>
+        {onEditingChange && (
+          <button type="button" className={styles.editToggle} onClick={() => onEditingChange(!editing)}>
+            {editing ? 'Done' : 'Edit'}
+          </button>
+        )}
       </header>
 
       {detail.tagStatus === 'pending' && detail.tags.length === 0 && (
@@ -66,7 +70,7 @@ export function TagEditor({ detail, editing, onEditingChange, onSearch, onAddToS
           <Icon name="plus" size={16} />
           <TagInput
             aria-label="Add tag"
-            placeholder="Add tag (e.g. sunset or character:miku)"
+            placeholder="Add a tag, e.g. character:miku"
             hide={detail.tags.map((t) => t.name)}
             onSubmit={(text) => add.mutate(text)}
             autoFocus
@@ -93,25 +97,46 @@ function InteractiveTag({
     () => onSearch(tag.name),
     () => onAddToSearch(tag.name),
   );
-  const confidence =
-    tag.confidence === null ? 'added by you' : `${Math.round(tag.confidence * 100)}% confidence`;
   return (
-    <button type="button" className={styles.tagButton} title={`${tag.name} · ${confidence}`} {...handlers}>
-      <TagPill name={tag.name} category={tag.category} manual={tag.source === 'manual'} size="sm" />
-    </button>
-  );
-}
-
-function EditableTag({ tag, onRemove }: { tag: ImageTag; onRemove: () => void }) {
-  return (
-    <button type="button" className={styles.tagButton} onClick={onRemove} aria-label={`Remove ${tag.name}`}>
+    <button
+      type="button"
+      className={clsx(styles.tagButton, isFaint(tag) && styles.faint)}
+      title={`${tag.name} · ${tagOrigin(tag)}`}
+      {...handlers}
+    >
       <TagPill
         name={tag.name}
         category={tag.category}
         manual={tag.source === 'manual'}
         size="sm"
-        className={styles.removable}
-        trailing={<Icon name="close" size={11} strokeWidth={2.6} />}
+        className={tag.source === 'implied' ? styles.implied : undefined}
+      />
+    </button>
+  );
+}
+
+/** In edit mode the confidence is written out, so it can be judged on touch screens too. */
+function EditableTag({ tag, onRemove }: { tag: ImageTag; onRemove: () => void }) {
+  const percent = confidencePercent(tag);
+  return (
+    <button
+      type="button"
+      className={clsx(styles.tagButton, isFaint(tag) && styles.faint)}
+      onClick={onRemove}
+      aria-label={`Remove ${tag.name} (${tagOrigin(tag)})`}
+    >
+      <TagPill
+        name={tag.name}
+        category={tag.category}
+        manual={tag.source === 'manual'}
+        size="sm"
+        className={clsx(styles.removable, tag.source === 'implied' && styles.implied)}
+        trailing={
+          <>
+            {percent && <span className={styles.percent}>{percent}</span>}
+            <Icon name="close" size={11} strokeWidth={2.6} />
+          </>
+        }
       />
     </button>
   );

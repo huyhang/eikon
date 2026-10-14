@@ -26,6 +26,8 @@ export interface ViewerProps {
   onClose: () => void;
   onSearch: (tag: string) => void;
   onAddToSearch: (tag: string) => void;
+  /** Opens "more like this" for an image; absent when similar-image search isn't available. */
+  onFindSimilar?: (id: number) => void;
 }
 
 const SLIDE_GAP = 24;
@@ -73,6 +75,7 @@ export function Viewer({
   onClose,
   onSearch,
   onAddToSearch,
+  onFindSimilar,
 }: ViewerProps) {
   const reduceMotion = useReducedMotion() ?? false;
   const wide = useMediaQuery(WIDE_VIEWER_QUERY);
@@ -240,6 +243,7 @@ export function Viewer({
           onToggleFavorite={toggleFavorite}
           onToggleInfo={() => setInfoOpen((o) => !o)}
           onEdit={openEditor}
+          onFindSimilar={onFindSimilar ? () => onFindSimilar(tile.id) : undefined}
         />
       </div>
 
@@ -257,6 +261,7 @@ export function Viewer({
             }}
             onSearch={onSearch}
             onAddToSearch={onAddToSearch}
+            similar={onFindSimilar !== undefined}
           />
         )}
       </AnimatePresence>

@@ -9,11 +9,16 @@ import { ToastProvider } from './context/Toasts';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { AuthGate } from './components/lock/AuthGate';
 import { AppShell } from './components/layout/AppShell';
+import { AllImagesPage } from './pages/AllImagesPage';
+import { DuplicatesPage } from './pages/DuplicatesPage';
 import { FavoritesPage } from './pages/FavoritesPage';
 import { GroupPage } from './pages/GroupPage';
 import { GroupsIndexPage } from './pages/GroupsIndexPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { ReviewPage } from './pages/ReviewPage';
+import { SavedPage } from './pages/SavedPage';
+import { TagsPage } from './pages/TagsPage';
 import { SearchPage } from './pages/SearchPage';
 import { SettingsPage } from './pages/SettingsPage';
 
@@ -54,6 +59,11 @@ export function AppRoutes() {
           <Route path="collections" element={<GroupsIndexPage key="collections" kind="collection" />} />
           <Route path="collections/:id" element={<GroupPage key="collection" kind="collection" />} />
           <Route path="favorites" element={<FavoritesPage />} />
+          <Route path="saved" element={<SavedPage />} />
+          <Route path="all" element={<AllImagesPage />} />
+          <Route path="review" element={<ReviewPage />} />
+          <Route path="duplicates" element={<DuplicatesPage />} />
+          <Route path="tags" element={<TagsPage />} />
           <Route path="search" element={<SearchPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFoundPage />} />
