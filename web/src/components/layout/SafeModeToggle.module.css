@@ -1,0 +1,31 @@
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px 0 9px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  background: var(--fill-3);
+  transition:
+    background-color 220ms ease,
+    color 220ms ease,
+    transform 160ms var(--ease-out);
+}
+
+.toggle:active {
+  transform: scale(0.94);
+}
+
+.compact {
+  width: 34px;
+  padding: 0;
+  justify-content: center;
+}
+
+.on {
+  color: #1d1d1f;
+  background: var(--warning);
+}

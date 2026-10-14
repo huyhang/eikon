@@ -1,0 +1,16 @@
+{
+  "name": "@eikon/fake-tagger",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@eikon/shared": "*",
+    "fastify": "^5.12.7",
+    "sharp": "^0.35.5"
+  }
+}

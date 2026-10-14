@@ -1,0 +1,23 @@
+.tile {
+  position: absolute;
+  top: 0;
+  overflow: hidden;
+  background: var(--tile-bg);
+  border-radius: 2px;
+  cursor: zoom-in;
+  transition: filter 200ms ease;
+}
+
+.tile:hover {
+  filter: brightness(1.08);
+}
+
+.tile:active {
+  filter: brightness(0.9);
+}
+
+.tile:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+  z-index: 1;
+}

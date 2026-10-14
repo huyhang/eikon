@@ -1,0 +1,19 @@
+.grid {
+  position: relative;
+  width: 100%;
+  touch-action: pan-y;
+  animation: gridIn 420ms var(--ease-out);
+}
+
+@keyframes gridIn {
+  from {
+    opacity: 0;
+  }
+}
+
+.row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}

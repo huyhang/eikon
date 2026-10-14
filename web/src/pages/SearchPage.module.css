@@ -1,0 +1,166 @@
+.page {
+  padding-bottom: 40px;
+}
+
+.searchArea {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.groupFilter {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: var(--fill-3);
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.groupFilter select {
+  appearance: none;
+  border: 0;
+  background: none;
+  outline: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  padding-right: 4px;
+  max-width: 180px;
+  cursor: pointer;
+}
+
+.groupFilter svg {
+  pointer-events: none;
+}
+
+.count {
+  margin-left: auto;
+  font-size: 14px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.related {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.relatedLabel {
+  flex: none;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.relatedRow {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 0;
+  margin-right: calc(-1 * var(--gutter));
+  padding-right: var(--gutter);
+}
+
+.relatedRow::-webkit-scrollbar {
+  display: none;
+}
+
+.relatedRow button {
+  display: inline-flex;
+  flex: none;
+  border-radius: 999px;
+}
+
+.pin {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--accent);
+  transition: transform 200ms var(--ease-spring);
+}
+
+.pin[aria-pressed='true'] {
+  color: var(--warning);
+  transform: scale(1.08);
+}
+
+.loading {
+  display: grid;
+  place-items: center;
+  min-height: 240px;
+}
+
+.stale {
+  opacity: 0.55;
+  transition: opacity 200ms ease;
+}
+
+.start {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 8px var(--gutter);
+}
+
+.startHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.startHeader h2 {
+  margin: 0;
+  font: 700 20px/1.2 var(--font-display);
+}
+
+.startHeader button {
+  color: var(--accent);
+  font-size: 15px;
+}
+
+.recent {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.recent a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 2px;
+  border-bottom: 0.5px solid var(--separator);
+  font-size: 16px;
+}
+
+.recent svg {
+  color: var(--text-3);
+}
+
+.muted {
+  color: var(--text-2);
+  margin: 0;
+}

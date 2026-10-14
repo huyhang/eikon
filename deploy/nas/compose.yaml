@@ -1,0 +1,39 @@
+# Eikon on the Synology NAS. See docs/SETUP.md.
+#   cd /volume1/docker/eikon/deploy/nas && sudo docker compose up -d --build
+name: eikon
+
+services:
+  eikon:
+    build:
+      context: ../..
+    image: eikon:latest
+    container_name: eikon
+    restart: unless-stopped
+    # Run as your DSM user so Eikon can write its data folder (find the ids with `id` over SSH).
+    user: '${PUID:?set PUID in .env}:${PGID:?set PGID in .env}'
+    # Loopback only: the NAS's LAN can't reach Eikon. `tailscale serve` publishes it to your tailnet over HTTPS.
+    ports:
+      - '127.0.0.1:${EIKON_HOST_PORT:-8080}:8080'
+    environment:
+      EIKON_PASSCODE: ${EIKON_PASSCODE:-}
+      EIKON_TAGGER_URL: ${EIKON_TAGGER_URL:?set EIKON_TAGGER_URL in .env, e.g. http://gpubox.tailXXXX.ts.net:7860}
+      EIKON_TAGGER_TOKEN: ${EIKON_TAGGER_TOKEN:-}
+      EIKON_SCAN_INTERVAL_MINUTES: ${EIKON_SCAN_INTERVAL_MINUTES:-5}
+      EIKON_PROCESS_CONCURRENCY: ${EIKON_PROCESS_CONCURRENCY:-2}
+      EIKON_TAG_CONCURRENCY: ${EIKON_TAG_CONCURRENCY:-2}
+      # Browsers reach Eikon through tailscale serve over HTTPS, so cookies can be Secure.
+      EIKON_COOKIE_SECURE: 'true'
+      TZ: ${TZ:-UTC}
+    # Resolve names through Tailscale's MagicDNS so the tagger URL can use gpubox's .ts.net name.
+    # 100.100.100.100 also forwards ordinary internet names, so nothing else is lost.
+    dns:
+      - '${TAILNET_DNS:-100.100.100.100}'
+    volumes:
+      - '${LIBRARY_PATH:?set LIBRARY_PATH in .env}:/library:ro'
+      - '${DATA_PATH:-./data}:/data'
+    mem_limit: 2g
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'

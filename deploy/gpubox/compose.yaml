@@ -1,0 +1,25 @@
+name: eikon-tagger
+
+services:
+  tagger:
+    build: ../../tagger
+    image: eikon-tagger:latest
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    # Only reachable from gpubox itself; `tailscale serve` publishes it to the tailnet.
+    ports:
+      - '127.0.0.1:7861:7860'
+    volumes:
+      - models:/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  models:

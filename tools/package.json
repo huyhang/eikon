@@ -1,0 +1,13 @@
+{
+  "name": "@eikon/tools",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "sharp": "^0.35.5"
+  }
+}

@@ -1,0 +1,42 @@
+.page {
+  padding-bottom: 40px;
+}
+
+.hero {
+  width: 112px;
+  border-radius: var(--radius-lg) !important;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow) !important;
+}
+
+.tags {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+}
+
+.density {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .density {
+    display: inline-flex;
+  }
+}
+
+.loading {
+  display: grid;
+  place-items: center;
+  min-height: 240px;
+}

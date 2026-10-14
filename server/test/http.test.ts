@@ -1,0 +1,286 @@
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import { decodeTile, type ImageListResponse } from '@eikon/shared';
+import { requiresSession } from '../src/http/app';
+import { mimeTypeFor } from '../src/http/routes/media';
+import { sanitizeSavedQuery } from '../src/http/routes/tags';
+import { seedImage } from './support/fixtures';
+import { createTestApp } from './support/testApp';
+
+type TestApp = Awaited<ReturnType<typeof createTestApp>>;
+let current: TestApp | undefined;
+
+async function setup(options?: Parameters<typeof createTestApp>[0]) {
+  current = await createTestApp(options);
+  return current;
+}
+
+afterEach(async () => {
+  await current?.app.close();
+  current = undefined;
+});
+
+describe('requiresSession', () => {
+  it.each([
+    ['/api/home', true],
+    ['/api/images?tag=a', true],
+    ['/media/thumb/1/sm', true],
+    ['/api/auth/status', false],
+    ['/api/auth/login', false],
+    ['/', false],
+    ['/illustrators/3', false],
+    ['/assets/index.js', false],
+  ])('%s → %s', (url, expected) => {
+    expect(requiresSession(url)).toBe(expected);
+  });
+});
+
+describe('auth flow', () => {
+  it('blocks the API without a session and unlocks it with the passcode', async () => {
+    const { app } = await setup({ passcode: '1234' });
+    expect((await app.inject('/api/home')).statusCode).toBe(401);
+    expect((await app.inject('/api/auth/status')).json()).toEqual({
+      required: true,
+      authenticated: false,
+      numeric: true,
+    });
+
+    const wrong = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { passcode: '0000' } });
+    expect(wrong.statusCode).toBe(401);
+
+    const login = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { passcode: '1234', remember: true },
+    });
+    expect(login.statusCode).toBe(204);
+    const cookie = login.cookies.find((c) => c.name === 'eikon_session')!;
+    expect(cookie).toMatchObject({ httpOnly: true, sameSite: 'Lax' });
+    expect(cookie.maxAge).toBeGreaterThan(0);
+
+    const home = await app.inject({ url: '/api/home', cookies: { eikon_session: cookie.value } });
+    expect(home.statusCode).toBe(200);
+  });
+
+  it('answers 429 with retryAfterSeconds once locked out', async () => {
+    const { app } = await setup({ passcode: '1234' });
+    for (let i = 0; i < 4; i++)
+      await app.inject({ method: 'POST', url: '/api/auth/login', payload: { passcode: 'x' } });
+    const locked = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { passcode: 'x' } });
+    expect(locked.statusCode).toBe(429);
+    expect(locked.json()).toMatchObject({ retryAfterSeconds: 30 });
+  });
+
+  it('serves the lock-screen mosaic without a session', async () => {
+    const { app, repos } = await setup({ passcode: '1234' });
+    seedImage(repos);
+    expect((await app.inject('/api/auth/mosaic')).json()).toEqual({ placeholders: ['AAAA'] });
+  });
+});
+
+describe('browse', () => {
+  it('home lists recent images, groups and totals, honouring safe mode', async () => {
+    const { app, repos } = await setup();
+    seedImage(repos, { rating: 'general', group: { kind: 'illustrator', name: 'Ana' } });
+    seedImage(repos, { rating: 'explicit', group: { kind: 'collection', name: 'Mood' } });
+    const all = (await app.inject('/api/home')).json();
+    expect(all.recent).toHaveLength(2);
+    expect(all.totals).toEqual({ images: 2, illustrators: 1, collections: 1 });
+    const safe = (await app.inject('/api/home?maxRating=sensitive')).json();
+    expect(safe.recent).toHaveLength(1);
+    expect(safe.collections).toEqual([]);
+    expect(safe.totals).toEqual({ images: 1, illustrators: 1, collections: 0 });
+  });
+
+  it('lists images as compact tuples filtered by tags', async () => {
+    const { app, repos } = await setup();
+    const sky = seedImage(repos, { tags: ['sky'], width: 300, height: 200 });
+    seedImage(repos, { tags: ['sea'] });
+    const body = (await app.inject('/api/images?tag=sky')).json() as ImageListResponse;
+    expect(body.total).toBe(1);
+    expect(decodeTile(body.tiles[0]!)).toMatchObject({ id: sky, width: 300, height: 200, rating: 'general' });
+  });
+
+  it('groups endpoints list and detail with top tags; unknown ids 404', async () => {
+    const { app, repos } = await setup();
+    seedImage(repos, { group: { kind: 'collection', name: 'Mood' }, tags: ['sky'] });
+    const { groups } = (await app.inject('/api/groups?kind=collection&sort=count')).json();
+    expect(groups.map((g: { name: string }) => g.name)).toEqual(['Mood']);
+    const detail = (await app.inject(`/api/groups/${groups[0].id}`)).json();
+    expect(detail.topTags).toEqual([{ name: 'sky', category: 'general', count: 1 }]);
+    expect((await app.inject('/api/groups/999')).statusCode).toBe(404);
+    expect((await app.inject('/api/groups/abc')).statusCode).toBe(404);
+  });
+
+  it('image detail includes files, tags and favourite state', async () => {
+    const { app, repos } = await setup();
+    const id = seedImage(repos, { tags: ['sky'], group: { kind: 'illustrator', name: 'Ana' } });
+    const detail = (await app.inject(`/api/images/${id}`)).json();
+    expect(detail).toMatchObject({
+      id,
+      favorite: false,
+      tagStatus: 'done',
+      animated: false,
+      tags: [{ name: 'sky', source: 'auto' }],
+      files: [{ group: { kind: 'illustrator', name: 'Ana' } }],
+    });
+  });
+});
+
+describe('curate', () => {
+  it('favourites and unfavourites', async () => {
+    const { app, repos } = await setup();
+    const id = seedImage(repos);
+    expect((await app.inject({ method: 'PUT', url: `/api/images/${id}/favorite` })).statusCode).toBe(204);
+    expect((await app.inject('/api/images?favorites=1')).json().total).toBe(1);
+    await app.inject({ method: 'DELETE', url: `/api/images/${id}/favorite` });
+    expect((await app.inject('/api/images?favorites=1')).json().total).toBe(0);
+    expect((await app.inject({ method: 'PUT', url: '/api/images/999/favorite' })).statusCode).toBe(404);
+  });
+
+  it('adds and removes tags, returning the updated detail', async () => {
+    const { app, repos } = await setup();
+    const id = seedImage(repos, { tags: ['sky'] });
+    const added = await app.inject({
+      method: 'POST',
+      url: `/api/images/${id}/tags`,
+      payload: { tag: 'Character: Hatsune Miku' },
+    });
+    expect(added.json().tags).toContainEqual({
+      name: 'hatsune_miku',
+      category: 'character',
+      confidence: null,
+      source: 'manual',
+    });
+    const removed = await app.inject({ method: 'DELETE', url: `/api/images/${id}/tags/sky` });
+    expect(removed.json().tags.map((t: { name: string }) => t.name)).toEqual(['hatsune_miku']);
+    const empty = await app.inject({ method: 'POST', url: `/api/images/${id}/tags`, payload: { tag: '  ' } });
+    expect(empty.statusCode).toBe(400);
+  });
+});
+
+describe('tags and saved searches', () => {
+  it('suggests, ranks and relates tags', async () => {
+    const { app, repos } = await setup();
+    seedImage(repos, { tags: ['blue_sky', 'city'] });
+    seedImage(repos, { tags: ['sky', 'city'] });
+    expect(
+      (await app.inject('/api/tags/suggest?q=Sky')).json().tags.map((t: { name: string }) => t.name),
+    ).toEqual(['sky', 'blue_sky']);
+    expect((await app.inject('/api/tags/top?limit=1')).json().tags[0].name).toBe('city');
+    expect(
+      (await app.inject('/api/tags/related?tag=sky')).json().tags.map((t: { name: string }) => t.name),
+    ).toEqual(['city']);
+  });
+
+  it('creates, lists and deletes saved searches', async () => {
+    const { app } = await setup();
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/saved-searches',
+      payload: { name: 'Cities', query: { tags: ['City'], exclude: [] } },
+    });
+    expect(created.json()).toMatchObject({ name: 'Cities', query: { tags: ['city'], exclude: [] } });
+    expect((await app.inject('/api/saved-searches')).json().searches).toHaveLength(1);
+    expect(
+      (await app.inject({ method: 'DELETE', url: `/api/saved-searches/${created.json().id}` })).statusCode,
+    ).toBe(204);
+    const invalid = await app.inject({
+      method: 'POST',
+      url: '/api/saved-searches',
+      payload: { name: 'x', query: {} },
+    });
+    expect(invalid.statusCode).toBe(400);
+  });
+
+  it.each([
+    [null, null],
+    [{}, null],
+    [
+      { tags: ['A b'], exclude: [3] },
+      { tags: ['a_b'], exclude: [] },
+    ],
+    [
+      { tags: [], exclude: [], group: 2 },
+      { tags: [], exclude: [], group: 2 },
+    ],
+    [{ tags: [], exclude: [], group: -1 }, null],
+  ])('sanitizeSavedQuery(%j)', (input, expected) => {
+    expect(sanitizeSavedQuery(input)).toEqual(expected);
+  });
+});
+
+describe('system', () => {
+  it('reports status, requests scans and manages the queue', async () => {
+    const { app, repos, scheduler, worker } = await setup();
+    const failed = seedImage(repos);
+    repos.tagQueue.markFailed(failed, 'nope', () => 0, 1);
+    expect((await app.inject('/api/status')).json().tagging).toMatchObject({ failed: 1, taggerOnline: true });
+    expect((await app.inject({ method: 'POST', url: '/api/scan' })).statusCode).toBe(202);
+    expect(scheduler.requestScan).toHaveBeenCalled();
+    expect((await app.inject('/api/tagging/failed')).json().images).toHaveLength(1);
+    await app.inject({ method: 'POST', url: '/api/tagging/retry-failed' });
+    expect(repos.tagQueue.counts().failed).toBe(0);
+    await app.inject({ method: 'POST', url: '/api/tagging/retag-all' });
+    expect(worker.wake).toHaveBeenCalledTimes(2);
+  });
+
+  it('reads and validates settings updates', async () => {
+    const { app } = await setup();
+    const updated = await app.inject({
+      method: 'PUT',
+      url: '/api/settings',
+      payload: { generalThreshold: 0.5, characterThreshold: 7 },
+    });
+    expect(updated.json()).toEqual({ generalThreshold: 0.5, characterThreshold: 0.85 });
+  });
+});
+
+describe('media', () => {
+  it('serves thumbnails and originals with immutable caching; missing ones 404', async () => {
+    const { app, repos, thumbnails, library } = await setup();
+    const id = seedImage(repos, { hash: 'abc', group: { kind: 'illustrator', name: 'Ana' } });
+    await thumbnails.write('abc', { sm: Buffer.from('small'), lg: Buffer.from('large') });
+    library.put('illustrator/Ana/abc-0.jpg', 'ORIGINAL');
+
+    const thumb = await app.inject(`/media/thumb/${id}/sm`);
+    expect(thumb.statusCode).toBe(200);
+    expect(thumb.headers['content-type']).toBe('image/webp');
+    expect(thumb.headers['cache-control']).toContain('immutable');
+    expect(thumb.body).toBe('small');
+
+    const original = await app.inject(`/media/original/${id}`);
+    expect(original.headers['content-type']).toBe('image/jpeg');
+    expect(original.body).toBe('ORIGINAL');
+
+    expect((await app.inject(`/media/thumb/${id}/xl`)).statusCode).toBe(404);
+    expect((await app.inject('/media/thumb/999/sm')).statusCode).toBe(404);
+    library.files.clear();
+    expect((await app.inject(`/media/original/${id}`)).statusCode).toBe(404);
+  });
+
+  it.each([
+    ['a.JPG', 'image/jpeg'],
+    ['a.avif', 'image/avif'],
+    ['a.bin', 'application/octet-stream'],
+  ])('mimeTypeFor(%s) → %s', (file, expected) => {
+    expect(mimeTypeFor(file)).toBe(expected);
+  });
+});
+
+describe('web app', () => {
+  it('serves index.html for client routes and 404 JSON for unknown API paths', async () => {
+    const dist = mkdtempSync(path.join(tmpdir(), 'eikon-web-'));
+    writeFileSync(path.join(dist, 'index.html'), '<html>eikon</html>');
+    mkdirSync(path.join(dist, 'assets'));
+    writeFileSync(path.join(dist, 'assets', 'app.js'), 'console.log(1)');
+    const { app } = await setup({ webDistDir: dist });
+    const page = await app.inject('/illustrators/4');
+    expect(page.body).toContain('eikon');
+    expect(page.headers['cache-control']).toBe('no-cache');
+    expect((await app.inject('/assets/app.js')).headers['cache-control']).toContain('immutable');
+    expect((await app.inject('/api/nope')).statusCode).toBe(404);
+  });
+});

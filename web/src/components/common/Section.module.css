@@ -1,0 +1,36 @@
+.section {
+  margin-top: 28px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--gutter);
+  margin-bottom: 12px;
+}
+
+.header h2 {
+  margin: 0;
+  font: 700 22px/1.2 var(--font-display);
+  letter-spacing: -0.015em;
+}
+
+.titleLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.titleLink svg {
+  color: var(--text-3);
+}
+
+.seeAll {
+  color: var(--accent);
+  font-size: 15px;
+}
+
+.padded {
+  padding: 0 var(--gutter);
+}

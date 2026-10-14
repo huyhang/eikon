@@ -1,0 +1,30 @@
+.strip {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--gutter);
+  padding: 2px var(--gutter) 8px;
+  scrollbar-width: none;
+}
+
+.strip::-webkit-scrollbar {
+  display: none;
+}
+
+.item {
+  flex: none;
+  height: clamp(220px, 34vw, 380px);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  scroll-snap-align: start;
+  background: var(--tile-bg);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  transition: transform 260ms var(--ease-out);
+  cursor: zoom-in;
+}
+
+.item:active {
+  transform: scale(0.98);
+}

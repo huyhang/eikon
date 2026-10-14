@@ -1,0 +1,13 @@
+.page {
+  padding-bottom: 40px;
+}
+
+.search {
+  margin-top: 14px;
+}
+
+.loading {
+  display: grid;
+  place-items: center;
+  min-height: 240px;
+}

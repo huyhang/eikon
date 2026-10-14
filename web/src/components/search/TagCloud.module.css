@@ -1,0 +1,30 @@
+.cloud {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cloud li {
+  animation: rise 360ms var(--ease-out) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.cloud button {
+  display: inline-flex;
+  border-radius: 999px;
+}
+
+.pill {
+  font-size: inherit !important;
+  height: auto !important;
+  padding: 0.4em 0.9em !important;
+}

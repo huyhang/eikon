@@ -1,0 +1,111 @@
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header h3 {
+  margin: 0;
+  font: 700 17px/1.2 var(--font-display);
+}
+
+.editToggle {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 15px;
+  padding: 4px 2px;
+}
+
+.group h4 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.tags {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tagButton {
+  display: inline-flex;
+  max-width: 100%;
+  border-radius: 999px;
+  -webkit-touch-callout: none;
+}
+
+.tagButton:active > span {
+  transform: scale(0.95);
+}
+
+.removable {
+  animation: wiggle 300ms ease;
+}
+
+@keyframes wiggle {
+  30% {
+    transform: rotate(-2deg);
+  }
+  70% {
+    transform: rotate(2deg);
+  }
+}
+
+.addRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 12px;
+  border-radius: var(--radius-md);
+  background: var(--fill-3);
+  color: var(--text-2);
+}
+
+.pending {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.shimmer {
+  width: 64px;
+  height: 10px;
+  border-radius: 5px;
+  background: linear-gradient(90deg, var(--fill-2), var(--fill), var(--fill-2));
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.muted {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+}

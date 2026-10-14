@@ -1,0 +1,66 @@
+.ring {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  transition: background-color 160ms ease;
+}
+
+.ring:hover {
+  background: var(--fill-3);
+}
+
+.ring svg {
+  transform: rotate(-90deg);
+}
+
+.track {
+  fill: none;
+  stroke: var(--fill);
+  stroke-width: 2.6;
+}
+
+.progress {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 600ms var(--ease-out);
+}
+
+.scanning .progress {
+  stroke: var(--cat-general);
+}
+
+.offline .progress,
+.failed .progress {
+  stroke: var(--text-3);
+}
+
+.tagging svg,
+.scanning svg {
+  animation: breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--warning);
+  box-shadow: 0 0 0 2px var(--bg);
+}
+
+.failed .dot {
+  background: var(--danger);
+}

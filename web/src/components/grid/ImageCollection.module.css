@@ -1,0 +1,10 @@
+/* Edge-to-edge on phones like Photos; aligned with page content on larger screens. */
+.grid {
+  padding-inline: 0;
+}
+
+@media (min-width: 768px) {
+  .grid {
+    padding-inline: var(--gutter);
+  }
+}
