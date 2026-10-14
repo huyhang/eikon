@@ -22,6 +22,13 @@ services:
       EIKON_SCAN_INTERVAL_MINUTES: ${EIKON_SCAN_INTERVAL_MINUTES:-5}
       EIKON_PROCESS_CONCURRENCY: ${EIKON_PROCESS_CONCURRENCY:-2}
       EIKON_TAG_CONCURRENCY: ${EIKON_TAG_CONCURRENCY:-8}
+      EIKON_BACKUP_HOUR: ${EIKON_BACKUP_HOUR:-3}
+      EIKON_BACKUP_KEEP: ${EIKON_BACKUP_KEEP:-7}
+      # Sign in by tailnet identity (comma-separated logins, or * for anyone on the tailnet).
+      EIKON_TAILSCALE_USERS: ${EIKON_TAILSCALE_USERS:-}
+      # tailscale serve reaches the container through the network gateway below, so that is the only
+      # address whose Tailscale-User-* headers are believed.
+      EIKON_TRUSTED_PROXIES: ${EIKON_GATEWAY:-172.29.53.1}
       # Browsers reach Eikon through tailscale serve over HTTPS, so cookies can be Secure.
       EIKON_COOKIE_SECURE: 'true'
       TZ: ${TZ:-UTC}
@@ -32,9 +39,20 @@ services:
     volumes:
       - '${LIBRARY_PATH:?set LIBRARY_PATH in .env}:/library:ro'
       - '${DATA_PATH:-./data}:/data'
+    networks:
+      - eikon
     mem_limit: 2g
     logging:
       driver: json-file
       options:
         max-size: '10m'
         max-file: '3'
+
+# A fixed subnet so the gateway address (what Eikon sees as the client for every request that comes
+# through tailscale serve) is known in advance. Change both if 172.29.53.0/24 is taken on your NAS.
+networks:
+  eikon:
+    ipam:
+      config:
+        - subnet: ${EIKON_SUBNET:-172.29.53.0/24}
+          gateway: ${EIKON_GATEWAY:-172.29.53.1}

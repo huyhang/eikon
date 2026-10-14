@@ -7,7 +7,7 @@ image needs are sent to the builder.
 | Path | What |
 |---|---|
 | `eikon/` | The Eikon image (API server + built web app) that runs on the Synology NAS |
-| `tagger/` | The CUDA tagger image (WD v3 tagger) that runs on gpubox |
+| `tagger/` | The CUDA tagger image (WD v3 tags plus CLIP embeddings for similar-image and describe search) that runs on gpubox |
 | `nas/` | Compose stack and `.env.example` for the NAS — see [`docs/SETUP.md`](../docs/SETUP.md) |
 | `gpubox/` | Compose stack, `.env.example` and setup guide for gpubox — see [`gpubox/README.md`](gpubox/README.md) |
 

@@ -25,7 +25,9 @@ Nothing is reachable from your LAN or the internet. Both containers listen on lo
 
 Follow [`docker/gpubox/README.md`](../docker/gpubox/README.md). When you finish, these should be true:
 
-- `curl http://gpubox:7860/health` from your Mac returns `{"status":"ok", … "device":"cuda"}`.
+- `curl http://gpubox:7860/health` from your Mac returns `{"status":"ok", … "device":"cuda", "embedModel": …}`.
+  `embedModel` names the CLIP model behind **More like this** and **Describe** search; `null` means those
+  features are off and everything else still works.
 - You have written down the `TAGGER_TOKEN` you put in `docker/gpubox/.env`.
 
 Then note gpubox's full MagicDNS name. Your tailnet name is shown in the admin console under **DNS**
@@ -56,8 +58,10 @@ Eikon reads one shared folder with two subfolders:
 - Supported files: JPG, PNG, WebP, GIF and AVIF. Other files are ignored, and so are Synology's `@eaDir` and `#recycle` folders.
 - Eikon never changes this folder. If the same image appears in an illustrator folder and in a collection, it is stored and tagged once.
 
-Then create a folder for Eikon's own data (database and thumbnails, roughly 300 KB per image), for example
-`/volume1/docker/eikon-data`, using File Station or over SSH:
+Then create a folder for Eikon's own data, for example `/volume1/docker/eikon-data`, using File Station or over SSH.
+Plan on about **0.5 MB per image**: mostly the large viewer thumbnail (~400 KB), plus the grid thumbnail
+(~50 KB), the database with its similarity vectors (~3 KB) and a week of nightly database backups. 20,000
+images come to roughly 10 GB.
 
 ```bash
 sudo mkdir -p /volume1/docker/eikon-data
@@ -132,6 +136,7 @@ Fill in:
 | `EIKON_TAGGER_URL` | `http://gpubox.<tailnet>.ts.net:7860`, with the name from Part 1 |
 | `EIKON_TAGGER_TOKEN` | The same value as `TAGGER_TOKEN` on gpubox |
 | `TZ` | Your time zone, e.g. `Europe/Paris` |
+| `EIKON_TAILSCALE_USERS` *(optional)* | Your Tailscale login, to skip the passcode on your own devices. See [Sign in with your tailnet identity](#sign-in-with-your-tailnet-identity) |
 | `EIKON_HOST_PORT` *(optional)* | Loopback port on the NAS, default `8080`. Change it only if 8080 is taken; Part 5.2 must then use the same port |
 
 Make sure that user can write the data folder and read the library:
@@ -153,10 +158,10 @@ Look for `Eikon is ready`, then `tagger online` and `scan finished`. Check it fr
 
 ```bash
 curl http://127.0.0.1:8080/api/auth/status
-# {"required":true,"authenticated":false,"numeric":true}
+# {"required":true,"authenticated":false,"passcode":true,"numeric":true,"method":null,"user":null}
 
 sudo docker exec eikon node -e "fetch(process.env.EIKON_TAGGER_URL+'/health').then(r=>r.text()).then(console.log)"
-# {"status":"ok","model":"wd-eva02-large-tagger-v3","device":"cuda"}
+# {"status":"ok","model":"wd-eva02-large-tagger-v3","device":"cuda","embedModel":"clip-vit-large-patch14"}
 ```
 
 > **Prefer the GUI?** Container Manager → **Project → Create**. Set the path to
@@ -242,7 +247,32 @@ The first scan and tagging run in the background. The ring next to the logo show
 
 - **iPhone / iPad:** open the URL in **Safari** → Share → **Add to Home Screen**. It then opens full-screen like an app.
 - **Mac:** in Safari, choose **File → Add to Dock**. In Chrome, use the install icon in the address bar.
-- Tick **Remember this device** on the lock screen so you're only asked for the passcode once per device.
+- Tick **Remember this device** on the lock screen so you're only asked for the passcode once per device
+  (for 400 days; without it a sign-in lasts 12 hours).
+- **Offline favorites:** in **Settings → Offline**, turn on **Keep favorites available offline** on a phone or
+  iPad you travel with. Your favorites (grid and viewer thumbnails, tags) are saved on the device and open
+  without a connection; they stay in sync on their own. On iPhone and iPad, use the Home Screen app: Safari may
+  clear saved data of sites you haven't opened for a few weeks, but not of Home Screen apps.
+
+### Sign in with your tailnet identity
+
+Every request that comes through `tailscale serve` from a person's device carries their Tailscale login. Eikon can
+use that instead of the passcode, so your own devices never see the lock screen while anyone else still does.
+
+1. Find your login: in the admin console under **Users**, or run `tailscale whois $(tailscale ip -4)` on any of
+   your devices. It looks like `you@github` or `you@gmail.com`.
+2. In `docker/nas/.env`, set `EIKON_TAILSCALE_USERS=you@github` (several logins: comma-separated; `*` means
+   anyone on your tailnet).
+3. `sudo docker compose up -d`.
+
+Settings → **This device** then shows "Signed in as …". Devices without a user (tagged devices, `tailscale serve`
+requests from scripts) still get the passcode, so keep `EIKON_PASSCODE` set.
+
+> **Why the compose file pins a network.** Identity headers could be forged by anything that can reach Eikon
+> directly, so Eikon only believes them from `EIKON_TRUSTED_PROXIES`. `tailscale serve` on the NAS reaches the
+> container through the Docker network's gateway, so the compose file gives Eikon's network a fixed subnet
+> (`172.29.53.0/24`) and trusts its gateway (`172.29.53.1`). If that subnet clashes with another Docker network
+> on your NAS, `docker compose up` says so; pick another with `EIKON_SUBNET` and `EIKON_GATEWAY` in `.env`.
 
 ---
 
@@ -254,9 +284,16 @@ The first scan and tagging run in the background. The ring next to the logo show
 | Fix a tag | Open the image → swipe up → **Edit tags**. Your edits are never overwritten by re-tagging |
 | Change the passcode | Edit `EIKON_PASSCODE` in `.env`, then `sudo docker compose up -d`. This signs out every device |
 | Update Eikon | `cd /volume1/docker/eikon && sudo git pull && cd docker/nas && sudo docker compose up -d --build` |
-| Back up | Back up `DATA_PATH`. Tags, favourites, and saved searches live in `eikon.db`; thumbnails can always be rebuilt |
+| Back up | Eikon copies its database to `DATA_PATH/backups` every night at 03:00 (`EIKON_BACKUP_HOUR`) and keeps a week of them (`EIKON_BACKUP_KEEP`). **Settings → Backups & Export** shows them, downloads one, or backs up now. Include `DATA_PATH/backups` in Hyper Backup; thumbnails can always be rebuilt |
+| Keep your curation portable | **Settings → Export curation** downloads every tag, favorite, rating, alias and saved search as JSON, keyed by file content, so it survives a database rebuild or moving files around |
+| Review new tags | **Library → Review** walks through freshly tagged images: keep, fix or skip each one |
+| Tidy tags | **Settings → Tags**: rename, merge, re-categorise, add aliases (`miku` → `hatsune_miku`) and implications (`hatsune_miku` ⇒ `vocaloid`) |
+| Find duplicates | **Library → Duplicates** groups near-identical pictures (resized, re-encoded, slightly cropped). **Settings → Hide smaller copies** shows only the best copy in grids |
+| Find similar pictures | **More like this** in the viewer, or describe what you want in Search ("girl with an umbrella in the rain"). Both need gpubox with its embedding model; Eikon fills in vectors for older images on its own |
+| Sign out a lost device | **Settings → Sign out all devices**. Every device needs the passcode again; Tailscale sign-ins are revoked by removing the device from your tailnet |
 | Switch tagging model | Change `TAGGER_MODEL_REPO` on gpubox, restart the tagger, then use **Settings → Re-tag all** |
-| gpubox is off | Nothing breaks. New images wait in the queue and get tagged when gpubox is back |
+| Switch embedding model | Change `TAGGER_EMBED_REPO` on gpubox and restart it. Eikon notices the new model and recomputes every image's vector in the background |
+| gpubox is off | Nothing breaks. New images wait in the queue and get tagged when gpubox is back; describe search says it's unavailable |
 
 ---
 
@@ -274,6 +311,9 @@ The first scan and tagging run in the background. The ring next to the logo show
 | Container restarts with "permission denied" on `/data` | `PUID`/`PGID` don't own `DATA_PATH`. Redo the `chown` in 4.2 |
 | Some images never get tagged | Tap the status ring next to the Eikon logo. The **Library status** sheet lists failures with the reason, and **Retry** re-queues them |
 | Sign-in keeps asking for the passcode | Use the HTTPS address. Eikon's cookie is marked Secure, so plain `http://` won't keep you signed in |
+| Tailscale sign-in doesn't happen | Check the login in `EIKON_TAILSCALE_USERS` matches `tailscale whois` exactly. Then `sudo docker network inspect eikon_eikon` should show the gateway in `EIKON_GATEWAY` (default `172.29.53.1`) |
+| No **More like this** or **Describe** search | gpubox reports `"embedModel": null`: set `TAGGER_EMBED_REPO` there (see the gpubox README). The status sheet shows how many images still need vectors |
+| Settings says offline favorites need HTTPS | Open Eikon at its `https://…ts.net` address; browsers only allow offline storage on secure pages |
 
 ---
 
@@ -281,14 +321,23 @@ The first scan and tagging run in the background. The ring next to the logo show
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `EIKON_PASSCODE` | *(empty = no lock screen)* | Lock-screen passcode |
+| `EIKON_PASSCODE` | *(empty = no lock screen)* | Lock-screen passcode. Digits only shows a keypad |
+| `EIKON_TAILSCALE_USERS` | *(empty = off)* | Tailscale logins that skip the passcode, comma-separated, or `*` for anyone on the tailnet |
+| `EIKON_TRUSTED_PROXIES` | `127.0.0.1,::1` (compose: `EIKON_GATEWAY`) | Addresses whose `Tailscale-User-*` headers are believed |
 | `EIKON_TAGGER_URL` | *(required in compose)* | Tagger base URL, e.g. `http://gpubox.tail1234.ts.net:7860` |
 | `EIKON_TAGGER_TOKEN` | *(empty)* | Bearer token for the tagger |
 | `EIKON_SCAN_INTERVAL_MINUTES` | `5` | Library rescan interval |
 | `EIKON_PROCESS_CONCURRENCY` | `2` | Images hashed and thumbnailed in parallel during a scan |
-| `EIKON_TAG_CONCURRENCY` | `2` | Parallel requests to the tagger |
+| `EIKON_TAG_CONCURRENCY` | `8` | Requests in flight to the tagger; it batches them on the GPU |
+| `EIKON_BACKUP_HOUR` | `3` | Hour of day (0–23, in `TZ`) for the nightly database backup |
+| `EIKON_BACKUP_KEEP` | `7` | Nightly backups kept |
 | `EIKON_COOKIE_SECURE` | `false` (`true` in compose) | Mark the session cookie HTTPS-only |
 | `EIKON_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
+| `EIKON_PRETTY_LOGS` | `false` | Human-readable logs instead of JSON (development) |
 | `EIKON_LIBRARY_DIR` / `EIKON_DATA_DIR` / `EIKON_WEB_DIST` / `EIKON_HOST` / `EIKON_PORT` | set by the image | Leave these alone in Docker |
+
+Compose-only settings in `docker/nas/.env`: `LIBRARY_PATH`, `DATA_PATH`, `PUID`, `PGID`, `TZ`, `EIKON_HOST_PORT`
+(default `8080`), `TAILNET_DNS` (default `100.100.100.100`), and `EIKON_SUBNET` / `EIKON_GATEWAY` (default
+`172.29.53.0/24` / `172.29.53.1`).
 
 The tagger's settings are listed in [`tagger/README.md`](../tagger/README.md).
