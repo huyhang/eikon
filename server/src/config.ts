@@ -9,6 +9,10 @@ export interface Config {
   taggerUrl: string;
   taggerToken: string | undefined;
   passcode: string | undefined;
+  /** Tailnet logins allowed to sign in via `tailscale serve` identity headers ("*" = anyone). */
+  tailscaleUsers: string[];
+  /** Peer addresses trusted to assert identity and X-Forwarded-* headers. */
+  trustedProxies: string[];
   cookieSecure: boolean;
   scanIntervalMs: number;
   processConcurrency: number;
@@ -41,6 +45,15 @@ function optional(env: Env, key: string): string | undefined {
   return value ? value : undefined;
 }
 
+function list(env: Env, key: string, fallback: string[] = []): string[] {
+  const raw = optional(env, key);
+  if (raw === undefined) return fallback;
+  return raw
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+
 function url(env: Env, key: string, fallback: string): string {
   const value = optional(env, key) ?? fallback;
   try {
@@ -63,6 +76,8 @@ export function parseConfig(env: Env, cwd = process.cwd()): Config {
     taggerUrl: url(env, 'EIKON_TAGGER_URL', 'http://gpubox:7860'),
     taggerToken: optional(env, 'EIKON_TAGGER_TOKEN'),
     passcode: optional(env, 'EIKON_PASSCODE'),
+    tailscaleUsers: list(env, 'EIKON_TAILSCALE_USERS'),
+    trustedProxies: list(env, 'EIKON_TRUSTED_PROXIES', ['127.0.0.1', '::1']),
     cookieSecure: boolean(env, 'EIKON_COOKIE_SECURE', false),
     scanIntervalMs: integer(env, 'EIKON_SCAN_INTERVAL_MINUTES', 5) * 60_000,
     processConcurrency: integer(env, 'EIKON_PROCESS_CONCURRENCY', 2),

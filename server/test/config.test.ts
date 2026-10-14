@@ -13,6 +13,8 @@ describe('parseConfig', () => {
       passcode: undefined,
       cookieSecure: false,
       scanIntervalMs: 300_000,
+      tailscaleUsers: [],
+      trustedProxies: ['127.0.0.1', '::1'],
     });
   });
 
@@ -26,6 +28,13 @@ describe('parseConfig', () => {
     [{ EIKON_COOKIE_SECURE: 'no' }, 'cookieSecure', false],
     [{ EIKON_SCAN_INTERVAL_MINUTES: '1' }, 'scanIntervalMs', 60_000],
     [{ EIKON_TAGGER_URL: 'http://localhost:7860' }, 'taggerUrl', 'http://localhost:7860'],
+    [
+      { EIKON_TAILSCALE_USERS: 'me@example.com, you@github ' },
+      'tailscaleUsers',
+      ['me@example.com', 'you@github'],
+    ],
+    [{ EIKON_TAILSCALE_USERS: '*' }, 'tailscaleUsers', ['*']],
+    [{ EIKON_TRUSTED_PROXIES: '172.30.100.1' }, 'trustedProxies', ['172.30.100.1']],
   ])('%j sets %s', (env, key, expected) => {
     expect(parseConfig(env, '/app')[key as keyof ReturnType<typeof parseConfig>]).toEqual(expected);
   });

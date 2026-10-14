@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { screen } from '@testing-library/react';
 import type { HomeResponse } from '@eikon/shared';
 import { AppRoutes } from './App';
-import { createFakeApi, sampleTile } from './test/fakeApi';
+import { createFakeApi, fakeAuthStatus, sampleTile } from './test/fakeApi';
 import { renderWithProviders } from './test/render';
 
 const home: HomeResponse = {
@@ -19,17 +19,29 @@ describe('AppRoutes', () => {
   it.each([
     {
       name: 'locked',
-      auth: { required: true, authenticated: false, numeric: true },
+      auth: fakeAuthStatus({
+        required: true,
+        authenticated: false,
+        passcode: true,
+        numeric: true,
+        method: null,
+      }),
       expectText: 'Enter passcode',
     },
     {
       name: 'signed in',
-      auth: { required: true, authenticated: true, numeric: true },
+      auth: fakeAuthStatus({
+        required: true,
+        authenticated: true,
+        passcode: true,
+        numeric: true,
+        method: 'session',
+      }),
       expectText: 'Recently Added',
     },
     {
       name: 'no passcode configured',
-      auth: { required: false, authenticated: false, numeric: false },
+      auth: fakeAuthStatus({ authenticated: false, method: null }),
       expectText: 'Recently Added',
     },
   ])('$name → shows "$expectText"', async ({ auth, expectText }) => {

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   errorForStatus,
+  joinUrl,
   HttpTaggerClient,
   TaggerRejectedError,
   TaggerUnavailableError,
@@ -18,6 +19,17 @@ describe('errorForStatus', () => {
     [503, TaggerUnavailableError],
   ])('%i → %o', (status, type) => {
     expect(errorForStatus(status, 'x')).toBeInstanceOf(type);
+  });
+});
+
+describe('joinUrl', () => {
+  it.each([
+    ['http://gpubox:7860', '/health', 'http://gpubox:7860/health'],
+    ['http://gpubox:7860/', '/v1/tag', 'http://gpubox:7860/v1/tag'],
+    ['https://nas.example/tagger', '/v1/tag', 'https://nas.example/tagger/v1/tag'],
+    ['https://nas.example/tagger//', '/health', 'https://nas.example/tagger/health'],
+  ])('%s + %s → %s', (base, path, expected) => {
+    expect(joinUrl(base, path)).toBe(expected);
   });
 });
 

@@ -3,7 +3,7 @@ import path from 'node:path';
 import pino from 'pino';
 import { AuthService } from './auth/authService';
 import { LoginThrottle } from './auth/loginThrottle';
-import { loadOrCreateSecret } from './auth/secretStore';
+import { FileSecretStore } from './auth/secretStore';
 import { SessionSigner } from './auth/session';
 import { parseConfig, type Config } from './config';
 import { Database } from './db/database';
@@ -64,17 +64,22 @@ async function main(config: Config): Promise<void> {
   });
   const scheduler = new ScanScheduler(() => scanner.scan(), config.scanIntervalMs, realSleep, logger);
 
-  const auth = new AuthService(
-    config.passcode,
-    new SessionSigner(loadOrCreateSecret(path.join(config.dataDir, 'session.key')), config.passcode ?? ''),
-    new LoginThrottle(systemClock),
-    systemClock,
-  );
+  const secrets = new FileSecretStore(path.join(config.dataDir, 'session.key'));
+  const auth = new AuthService({
+    passcode: config.passcode,
+    tailscaleSignIn: config.tailscaleUsers.length > 0,
+    signer: new SessionSigner(secrets.current(), config.passcode ?? ''),
+    secrets,
+    throttle: new LoginThrottle(systemClock),
+    clock: systemClock,
+  });
+  const tailscale = { proxies: config.trustedProxies, users: config.tailscaleUsers };
 
   const app = await buildApp(
     {
       repos,
       auth,
+      tailscale,
       scanner,
       scheduler,
       worker,
@@ -89,7 +94,12 @@ async function main(config: Config): Promise<void> {
 
   await app.listen({ host: config.host, port: config.port });
   logger.info(
-    { library: config.libraryDir, tagger: config.taggerUrl, passcode: auth.required ? 'on' : 'off' },
+    {
+      library: config.libraryDir,
+      tagger: config.taggerUrl,
+      passcode: config.passcode ? 'on' : 'off',
+      tailscaleSignIn: tailscale.users.length > 0 ? 'on' : 'off',
+    },
     'Eikon is ready',
   );
   scheduler.start();

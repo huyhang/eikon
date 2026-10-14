@@ -1,6 +1,7 @@
 import type { TaggingStatus } from '@eikon/shared';
 import type { QueueCounts } from '../db/tagQueueRepository';
 import type { ThumbnailStore } from '../media/thumbnailStore';
+import { BackgroundLoop } from '../util/backgroundLoop';
 import type { Clock, Sleep } from '../util/clock';
 import { mapWithConcurrency } from '../util/concurrency';
 import type { Logger } from '../util/logger';
@@ -53,30 +54,27 @@ export class TagWorker {
   private online = false;
   private model: string | null = null;
   private offlineStreak = 0;
-  private controller: AbortController | null = null;
-  private wakeController = new AbortController();
+  private readonly loop: BackgroundLoop;
 
-  constructor(private readonly deps: TagWorkerDeps) {}
+  constructor(private readonly deps: TagWorkerDeps) {
+    this.loop = new BackgroundLoop(() => this.iterate(), deps.sleep);
+  }
 
   status(): TaggingStatus {
     return { ...this.deps.queue.counts(), taggerOnline: this.online, taggerModel: this.model };
   }
 
   start(): void {
-    if (this.controller) return;
-    this.controller = new AbortController();
-    void this.loop(this.controller.signal);
+    this.loop.start();
   }
 
   stop(): void {
-    this.controller?.abort();
-    this.controller = null;
-    this.wake();
+    this.loop.stop();
   }
 
-  /** New work arrived (or the user asked for a retry): stop waiting. */
+  /** New work arrived (or the user asked for a retry): stop waiting, or skip the next wait. */
   wake(): void {
-    this.wakeController.abort();
+    this.loop.wake();
   }
 
   /** One iteration of the loop; exposed for tests. */
@@ -96,18 +94,12 @@ export class TagWorker {
     return backoffDelay(this.offlineStreak, offlineBaseMs, offlineMaxMs);
   }
 
-  private async loop(signal: AbortSignal): Promise<void> {
-    while (!signal.aborted) {
-      const result = await this.runOnce().catch((error) => {
-        this.deps.logger.error({ err: error }, 'tag worker iteration failed');
-        return 'offline' as const;
-      });
-      const delay = this.delayAfter(result);
-      if (delay > 0) {
-        this.wakeController = new AbortController();
-        await this.deps.sleep(delay, AbortSignal.any([signal, this.wakeController.signal]));
-      }
-    }
+  private async iterate(): Promise<number> {
+    const result = await this.runOnce().catch((error) => {
+      this.deps.logger.error({ err: error }, 'tag worker iteration failed');
+      return 'offline' as const;
+    });
+    return this.delayAfter(result);
   }
 
   private async checkHealth(): Promise<boolean> {

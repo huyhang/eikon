@@ -44,7 +44,10 @@ describe('auth flow', () => {
     expect((await app.inject('/api/auth/status')).json()).toEqual({
       required: true,
       authenticated: false,
+      passcode: true,
       numeric: true,
+      method: null,
+      user: null,
     });
 
     const wrong = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { passcode: '0000' } });
@@ -58,10 +61,42 @@ describe('auth flow', () => {
     expect(login.statusCode).toBe(204);
     const cookie = login.cookies.find((c) => c.name === 'eikon_session')!;
     expect(cookie).toMatchObject({ httpOnly: true, sameSite: 'Lax' });
-    expect(cookie.maxAge).toBeGreaterThan(0);
+    expect(cookie.maxAge).toBe(400 * 24 * 60 * 60);
 
     const home = await app.inject({ url: '/api/home', cookies: { eikon_session: cookie.value } });
     expect(home.statusCode).toBe(200);
+  });
+
+  it('signs out every device', async () => {
+    const { app } = await setup({ passcode: '1234' });
+    const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { passcode: '1234' } });
+    const cookies = { eikon_session: login.cookies.find((c) => c.name === 'eikon_session')!.value };
+    expect((await app.inject({ method: 'POST', url: '/api/auth/sign-out-everywhere' })).statusCode).toBe(401);
+    const out = await app.inject({ method: 'POST', url: '/api/auth/sign-out-everywhere', cookies });
+    expect(out.statusCode).toBe(204);
+    expect((await app.inject({ url: '/api/home', cookies })).statusCode).toBe(401);
+  });
+
+  it.each([
+    { label: 'from the trusted proxy', remoteAddress: '127.0.0.1', status: 200 },
+    { label: 'forged by another peer', remoteAddress: '100.64.0.9', status: 401 },
+  ])('accepts tailnet identity headers only $label', async ({ remoteAddress, status }) => {
+    const { app } = await setup({ tailscaleUsers: ['me@example.com'] });
+    const headers = { 'tailscale-user-login': 'me@example.com', 'tailscale-user-name': 'Me' };
+    expect((await app.inject({ url: '/api/home', headers, remoteAddress })).statusCode).toBe(status);
+  });
+
+  it('reports the tailnet user in the auth status', async () => {
+    const { app } = await setup({ tailscaleUsers: ['*'] });
+    const status = await app.inject({
+      url: '/api/auth/status',
+      headers: { 'tailscale-user-login': 'me@github' },
+    });
+    expect(status.json()).toMatchObject({
+      authenticated: true,
+      method: 'tailscale',
+      user: { login: 'me@github' },
+    });
   });
 
   it('answers 429 with retryAfterSeconds once locked out', async () => {

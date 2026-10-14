@@ -4,8 +4,9 @@ import compress from '@fastify/compress';
 import cookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
+import { resolveCredentials } from './credentials';
 import type { AppDeps } from './deps';
-import { registerAuthRoutes, SESSION_COOKIE } from './routes/auth';
+import { registerAuthRoutes } from './routes/auth';
 import { registerBrowseRoutes } from './routes/browse';
 import { registerCurateRoutes } from './routes/curate';
 import { registerMediaRoutes } from './routes/media';
@@ -21,12 +22,14 @@ export function requiresSession(url: string): boolean {
 }
 
 export async function buildApp(deps: AppDeps, options: FastifyServerOptions = {}): Promise<FastifyInstance> {
-  const app = Fastify({ trustProxy: true, ...options });
+  // Only the configured proxies (normally `tailscale serve`) may supply X-Forwarded-* headers.
+  const app = Fastify({ trustProxy: deps.tailscale.proxies, ...options });
   await app.register(cookie);
   await app.register(compress, { threshold: 1024 });
 
   app.addHook('onRequest', async (request, reply) => {
-    if (requiresSession(request.url) && !deps.auth.isAuthenticated(request.cookies[SESSION_COOKIE])) {
+    const credentials = resolveCredentials(request, deps.tailscale);
+    if (requiresSession(request.url) && !deps.auth.isAuthenticated(credentials)) {
       return reply.code(401).send({ error: 'unauthorized' });
     }
   });

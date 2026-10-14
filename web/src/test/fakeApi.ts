@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { ImageDetail, ImageTile, StatusResponse } from '@eikon/shared';
+import type { AuthStatus, ImageDetail, ImageTile, StatusResponse } from '@eikon/shared';
 import type { ApiClient } from '../api/client';
 
 export const sampleTile = (id: number, partial: Partial<ImageTile> = {}): ImageTile => ({
@@ -39,10 +39,23 @@ export const idleStatus: StatusResponse = {
   },
 };
 
+/** An AuthStatus for an open (no passcode) server, with overrides. */
+export function fakeAuthStatus(overrides: Partial<AuthStatus> = {}): AuthStatus {
+  return {
+    required: false,
+    authenticated: true,
+    passcode: false,
+    numeric: false,
+    method: 'open',
+    user: null,
+    ...overrides,
+  };
+}
+
 /** Every method is a vi.fn with a harmless default; override per test. */
 export function createFakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
   const api: ApiClient = {
-    authStatus: vi.fn(async () => ({ required: false, authenticated: true, numeric: false })),
+    authStatus: vi.fn(async () => fakeAuthStatus()),
     login: vi.fn(async () => ({ ok: true as const })),
     logout: vi.fn(async () => {}),
     mosaic: vi.fn(async () => []),

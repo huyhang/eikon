@@ -23,6 +23,11 @@ export function errorForStatus(status: number, body: string): Error {
 
 export type Fetch = typeof fetch;
 
+/** Appends an absolute path to a base URL, keeping any path prefix the base has (e.g. "/tagger"). */
+export function joinUrl(base: string, path: string): string {
+  return `${base.replace(/\/+$/, '')}${path}`;
+}
+
 export class HttpTaggerClient implements TaggerClient {
   constructor(
     private readonly baseUrl: string,
@@ -46,7 +51,7 @@ export class HttpTaggerClient implements TaggerClient {
   private async request<T>(path: string, init: RequestInit): Promise<T> {
     let response: Response;
     try {
-      response = await this.fetchImpl(new URL(path, this.baseUrl), {
+      response = await this.fetchImpl(joinUrl(this.baseUrl, path), {
         ...init,
         headers: { ...(init.headers as Record<string, string>), ...this.authHeader() },
         signal: AbortSignal.timeout(this.timeoutMs),

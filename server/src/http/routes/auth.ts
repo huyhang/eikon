@@ -1,18 +1,22 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { AuthStatus, LoginErrorResponse, LoginRequest, MosaicResponse } from '@eikon/shared';
 import type { AppDeps } from '../deps';
+import { credentialsOf, SESSION_COOKIE } from '../credentials';
 
-export const SESSION_COOKIE = 'eikon_session';
-/** Browsers cap cookie lifetimes around 400 days. */
-const REMEMBER_SECONDS = 400 * 24 * 60 * 60;
+export { SESSION_COOKIE };
+
+function clearSession(reply: FastifyReply): void {
+  reply.clearCookie(SESSION_COOKIE, { path: '/' });
+}
 
 export function registerAuthRoutes(app: FastifyInstance, deps: AppDeps): void {
   app.get('/api/auth/status', async (request): Promise<AuthStatus> =>
-    deps.auth.status(request.cookies[SESSION_COOKIE]),
+    deps.auth.status(credentialsOf(request)),
   );
 
   app.post<{ Body: Partial<LoginRequest> }>('/api/auth/login', async (request, reply) => {
-    const outcome = deps.auth.login(String(request.body?.passcode ?? ''));
+    const remember = Boolean(request.body?.remember);
+    const outcome = deps.auth.login(String(request.body?.passcode ?? ''), remember);
     if (!outcome.ok) {
       const locked = outcome.retryAfterSeconds > 0;
       const body: LoginErrorResponse = locked
@@ -25,13 +29,21 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AppDeps): void {
       httpOnly: true,
       sameSite: 'lax',
       secure: deps.cookieSecure,
-      ...(request.body?.remember ? { maxAge: REMEMBER_SECONDS } : {}),
+      ...(remember ? { maxAge: Math.floor(outcome.ttlMs / 1000) } : {}),
     });
     return reply.code(204).send();
   });
 
   app.post('/api/auth/logout', async (_request, reply) => {
-    reply.clearCookie(SESSION_COOKIE, { path: '/' });
+    clearSession(reply);
+    return reply.code(204).send();
+  });
+
+  app.post('/api/auth/sign-out-everywhere', async (request, reply) => {
+    if (!deps.auth.isAuthenticated(credentialsOf(request)))
+      return reply.code(401).send({ error: 'unauthorized' });
+    deps.auth.signOutEverywhere();
+    clearSession(reply);
     return reply.code(204).send();
   });
 

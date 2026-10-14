@@ -46,7 +46,11 @@ describe('image query params', () => {
     [{ maxRating: 'spicy' }, {}],
     [{ favorites: 'yes' }, {}],
     [{ tag: ['', 'sky'] }, { tags: ['sky'] }],
-  ])('ignores malformed %j', (raw, expected) => {
+    [
+      { tag: 'Blue Hair', not: ' Rain ' },
+      { tags: ['blue_hair'], exclude: ['rain'] },
+    ],
+  ])('ignores malformed or normalizes %j', (raw, expected) => {
     expect(parseImageQuery(raw)).toEqual(expected);
   });
 });

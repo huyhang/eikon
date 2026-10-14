@@ -1,5 +1,5 @@
 import { isRating, ratingFromLevel, ratingLevel, type Rating } from './rating';
-import type { TagCategory } from './tags';
+import { normalizeTagName, type TagCategory } from './tags';
 
 export type GroupKind = 'illustrator' | 'collection';
 export type TagStatus = 'pending' | 'done' | 'failed';
@@ -64,9 +64,9 @@ export function imageQueryToSearchParams(query: ImageQuery): URLSearchParams {
 
 type RawParams = Record<string, string | string[] | undefined>;
 
-function asList(value: string | string[] | undefined): string[] {
+function asTagList(value: string | string[] | undefined): string[] {
   if (value === undefined) return [];
-  return (Array.isArray(value) ? value : [value]).filter((v) => v.length > 0);
+  return (Array.isArray(value) ? value : [value]).map(normalizeTagName).filter((v) => v.length > 0);
 }
 
 function asPositiveInt(value: string | string[] | undefined): number | undefined {
@@ -84,9 +84,9 @@ export function parseImageQuery(raw: RawParams): ImageQuery {
   const query: ImageQuery = {};
   const group = asPositiveInt(raw.group);
   if (group !== undefined) query.group = group;
-  const tags = asList(raw.tag);
+  const tags = asTagList(raw.tag);
   if (tags.length) query.tags = tags;
-  const exclude = asList(raw.not);
+  const exclude = asTagList(raw.not);
   if (exclude.length) query.exclude = exclude;
   if (first(raw.favorites) === '1') query.favorites = true;
   const sort = first(raw.sort);
@@ -231,11 +231,26 @@ export interface Settings {
   characterThreshold: number;
 }
 
+/** How a request is signed in: nothing configured, a passcode session, or a tailnet identity. */
+export type AuthMethod = 'open' | 'session' | 'tailscale';
+
+export interface TailnetUser {
+  login: string;
+  name: string | null;
+}
+
 export interface AuthStatus {
+  /** False when Eikon is open to anyone who can reach it. */
   required: boolean;
   authenticated: boolean;
+  /** Whether signing in with a passcode is possible. */
+  passcode: boolean;
   /** True when the passcode is digits only, so the UI can show a keypad. */
   numeric: boolean;
+  /** How this request is signed in (null when it isn't). */
+  method: AuthMethod | null;
+  /** The tailnet user, when signed in through Tailscale. */
+  user: TailnetUser | null;
 }
 
 export interface LoginRequest {

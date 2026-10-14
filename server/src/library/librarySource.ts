@@ -39,10 +39,11 @@ export class FsLibrarySource implements LibrarySource {
     return entries;
   }
 
-  read(relPath: string): Promise<Buffer> {
+  async read(relPath: string): Promise<Buffer> {
     return readFile(this.resolve(relPath));
   }
 
+  /** Errors (including an escaping path) arrive as rejections, never as synchronous throws. */
   open(relPath: string): Promise<Readable> {
     return new Promise((resolve, reject) => {
       const stream = createReadStream(this.resolve(relPath));

@@ -1,13 +1,20 @@
 import { vi } from 'vitest';
 import { AuthService } from '../../src/auth/authService';
 import { LoginThrottle } from '../../src/auth/loginThrottle';
+import { MemorySecretStore } from '../../src/auth/secretStore';
 import { SessionSigner } from '../../src/auth/session';
 import { buildApp } from '../../src/http/app';
 import type { AppDeps } from '../../src/http/deps';
 import { createTestRepos } from './fixtures';
 import { FakeClock, MemoryLibrary, MemoryThumbnails } from './fakes';
 
-export async function createTestApp(options: { passcode?: string; webDistDir?: string } = {}) {
+export interface TestAppOptions {
+  passcode?: string;
+  webDistDir?: string;
+  tailscaleUsers?: string[];
+}
+
+export async function createTestApp(options: TestAppOptions = {}) {
   const repos = createTestRepos();
   const clock = new FakeClock();
   const library = new MemoryLibrary();
@@ -19,12 +26,16 @@ export async function createTestApp(options: { passcode?: string; webDistDir?: s
   };
   const deps: AppDeps = {
     repos,
-    auth: new AuthService(
-      options.passcode,
-      new SessionSigner('test', options.passcode ?? ''),
-      new LoginThrottle(clock),
+    auth: new AuthService({
+      passcode: options.passcode,
+      tailscaleSignIn: (options.tailscaleUsers ?? []).length > 0,
+      signer: new SessionSigner('test', options.passcode ?? ''),
+      secrets: new MemorySecretStore('test'),
+      throttle: new LoginThrottle(clock),
       clock,
-    ),
+    }),
+    // app.inject() connections come from 127.0.0.1.
+    tailscale: { proxies: ['127.0.0.1'], users: options.tailscaleUsers ?? [] },
     scanner: {
       status: () => ({ phase: 'idle' as const, processed: 0, total: 0, lastScanAt: null, lastError: null }),
     },
