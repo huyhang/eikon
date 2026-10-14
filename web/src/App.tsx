@@ -5,6 +5,7 @@ import { MotionConfig } from 'motion/react';
 import { AuthLockProvider, type LockSignal } from './context/AuthLock';
 import { DependenciesProvider, type Dependencies } from './context/Dependencies';
 import { PrefsProvider } from './context/Prefs';
+import { SelectionProvider } from './context/Selection';
 import { ToastProvider } from './context/Toasts';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { AuthGate } from './components/lock/AuthGate';
@@ -38,7 +39,9 @@ export function AppProviders({ dependencies, queryClient, lockSignal, children }
           <AuthLockProvider lockSignal={lockSignal}>
             <PrefsProvider>
               <ToastProvider>
-                <MotionConfig reducedMotion="user">{children}</MotionConfig>
+                <SelectionProvider>
+                  <MotionConfig reducedMotion="user">{children}</MotionConfig>
+                </SelectionProvider>
               </ToastProvider>
             </PrefsProvider>
           </AuthLockProvider>

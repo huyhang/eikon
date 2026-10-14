@@ -36,6 +36,7 @@ import { DescribeInput } from '../components/search/DescribeInput';
 import { SearchBar } from '../components/search/SearchBar';
 import { SearchFilters } from '../components/search/SearchFilters';
 import { SimilarHeader } from '../components/search/SimilarHeader';
+import { SelectButton } from '../components/selection/BulkBar';
 import { TagCloud } from '../components/search/TagCloud';
 import { TagPill } from '../components/search/TagPill';
 import { useCapabilities } from '../hooks/useCapabilities';
@@ -88,7 +89,14 @@ export function SearchPage() {
       <PageHeader
         title="Search"
         collapsedTitle={active ? describeSearch(state, groupName) : undefined}
-        actions={active && !ranked ? <PinButton state={state} groupName={groupName} /> : undefined}
+        actions={
+          active ? (
+            <>
+              {(results.data?.total ?? 0) > 0 && <SelectButton />}
+              {!ranked && <PinButton state={state} groupName={groupName} />}
+            </>
+          ) : undefined
+        }
       >
         <div className={styles.searchArea}>
           {(capabilities.describe || mode === 'describe') && state.like === undefined && (

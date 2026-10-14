@@ -1,7 +1,10 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import type { ImageTile } from '@eikon/shared';
 import { usePrefs } from '../../context/Prefs';
+import { useSelection } from '../../context/Selection';
+import { tileClickAction } from '../../core/selection';
+import type { PressModifiers } from '../../hooks/useLongPress';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { clampDensity, defaultDensity } from '../../core/gestures';
 import { EMPTY_SEARCH, searchFromParams, searchReducer, searchToParams } from '../../core/searchState';
@@ -44,6 +47,29 @@ export function ImageCollection({
   const openIndex = viewer.openId === null ? -1 : tiles.findIndex((t) => t.id === viewer.openId);
 
   const onOpen = useCallback((index: number) => viewer.open(tiles[index]!.id), [viewer, tiles]);
+  const selection = useSelection();
+  const selectable = variant === 'grid' && maxRows === undefined;
+  const selecting =
+    selectable && selection.state.active && (selection.state.contextKey ?? contextKey) === contextKey;
+  const selectedIds = useMemo(
+    () => (selecting ? new Set(selection.state.ids) : undefined),
+    [selecting, selection.state.ids],
+  );
+  const { dispatch: select, state: selectionState } = selection;
+  const onPress = useCallback(
+    (index: number, modifiers: PressModifiers) => {
+      const id = tiles[index]!.id;
+      const action = selectable ? tileClickAction(selectionState, contextKey, modifiers) : 'open';
+      if (action === 'open') onOpen(index);
+      else if (action === 'toggle') select({ type: 'toggle', contextKey, id });
+      else select({ type: 'range', contextKey, id, order: tiles.map((t) => t.id) });
+    },
+    [tiles, selectable, selectionState, contextKey, onOpen, select],
+  );
+  const onLongPress = useCallback(
+    (index: number) => select({ type: 'toggle', contextKey, id: tiles[index]!.id }),
+    [select, contextKey, tiles],
+  );
   const onDensityStep = useCallback(
     (delta: 1 | -1) => setDensity(clampDensity(level + delta)),
     [level, setDensity],
@@ -78,7 +104,9 @@ export function ImageCollection({
           tiles={tiles}
           contextKey={contextKey}
           density={maxRows === undefined ? level : Math.max(0, level - 1)}
-          onOpen={onOpen}
+          onPress={onPress}
+          onLongPress={selectable ? onLongPress : undefined}
+          selectedIds={selectedIds}
           onDensityStep={maxRows === undefined ? onDensityStep : undefined}
           maxRows={maxRows}
         />

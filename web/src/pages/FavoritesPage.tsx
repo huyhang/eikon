@@ -7,6 +7,7 @@ import { EmptyState } from '../components/common/EmptyState';
 import { ImageCollection } from '../components/grid/ImageCollection';
 import { PageHeader } from '../components/layout/PageHeader';
 import { SearchBar } from '../components/search/SearchBar';
+import { SelectButton } from '../components/selection/BulkBar';
 import { useSearchUrlState } from '../hooks/useSearchUrlState';
 import styles from './FavoritesPage.module.css';
 
@@ -19,7 +20,11 @@ export function FavoritesPage() {
 
   return (
     <div className={styles.page}>
-      <PageHeader title="Favorites" subtitle={results.data ? pluralize(total, 'favorite') : undefined}>
+      <PageHeader
+        title="Favorites"
+        subtitle={results.data ? pluralize(total, 'favorite') : undefined}
+        actions={total > 0 ? <SelectButton /> : undefined}
+      >
         {(total > 0 || filtering) && (
           <div className={styles.search}>
             <SearchBar state={state} dispatch={dispatch} placeholder="Filter favorites by tag" />

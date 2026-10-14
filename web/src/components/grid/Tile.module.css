@@ -21,3 +21,37 @@
   outline-offset: -3px;
   z-index: 1;
 }
+
+.selecting {
+  cursor: pointer;
+}
+
+.selected {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.selected :global(img) {
+  transform: scale(0.94);
+  transition: transform 160ms var(--ease-out);
+}
+
+.check {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid #fff;
+  background: rgba(0, 0, 0, 0.25);
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.selected .check {
+  background: var(--accent);
+  border-color: var(--accent);
+}

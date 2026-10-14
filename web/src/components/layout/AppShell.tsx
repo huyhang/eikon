@@ -2,6 +2,8 @@ import { Outlet } from 'react-router';
 import { usePrefs } from '../../context/Prefs';
 import { SIDEBAR_QUERY, useMediaQuery } from '../../hooks/useMediaQuery';
 import { Icon } from '../common/Icon';
+import { CommandPalette } from '../palette/CommandPalette';
+import { BulkBar } from '../selection/BulkBar';
 import { Sidebar } from './Sidebar';
 import { TabBar } from './TabBar';
 import { useScrollMemory } from './useScrollMemory';
@@ -18,6 +20,8 @@ export function AppShell() {
         <Outlet />
       </main>
       <TabBar />
+      <BulkBar />
+      <CommandPalette />
       <SafeModeBadge />
     </div>
   );

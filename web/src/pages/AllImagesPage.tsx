@@ -7,6 +7,7 @@ import { Segmented, Spinner } from '../components/common/Controls';
 import { ImageCollection } from '../components/grid/ImageCollection';
 import { PageHeader } from '../components/layout/PageHeader';
 import { SORTS } from '../components/search/SearchFilters';
+import { SelectButton } from '../components/selection/BulkBar';
 import styles from './AllImagesPage.module.css';
 
 /** The whole library in one grid (kept off the home page so it stays short). */
@@ -26,6 +27,7 @@ export function AllImagesPage() {
       <PageHeader
         title="All Images"
         back={{ to: '/', label: 'Library' }}
+        actions={<SelectButton />}
         subtitle={images.data ? pluralize(images.data.total, 'image') : undefined}
       >
         <div className={styles.controls}>

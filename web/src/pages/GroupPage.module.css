@@ -9,13 +9,37 @@
   box-shadow: var(--shadow) !important;
 }
 
-.tags {
-  list-style: none;
-  margin: 14px 0 0;
-  padding: 0;
+.tagRow {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
+  margin: 14px calc(-1 * var(--gutter)) 0;
+  padding: 2px var(--gutter);
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.tagRow::-webkit-scrollbar {
+  display: none;
+}
+
+.tagChip {
+  flex: none;
+  display: inline-flex;
+  border-radius: 999px;
+}
+
+.tagActive {
+  background: var(--accent) !important;
+  color: #fff !important;
+}
+
+.moreTags {
+  flex: none;
+  padding: 0 6px;
+  font-size: 14px;
+  color: var(--accent);
 }
 
 .controls {

@@ -139,3 +139,24 @@
 .settings:hover {
   background: var(--fill-3);
 }
+
+.jump {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px 8px;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--fill-3);
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.jump span {
+  flex: 1;
+  text-align: left;
+}
+
+.jump kbd {
+  font: 11px var(--font-mono);
+}

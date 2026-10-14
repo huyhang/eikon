@@ -5,6 +5,7 @@ import type { GroupKind } from '@eikon/shared';
 import { useGroups, useSavedSearches, useStatus } from '../../api/hooks';
 import { formatCompact } from '../../core/format';
 import { Icon } from '../common/Icon';
+import { OPEN_PALETTE_EVENT } from '../palette/CommandPalette';
 import { PinnedSearchList } from '../search/PinnedSearchList';
 import { LogoMark } from './Logo';
 import { groupPath, SIDEBAR_NAV } from './navigation';
@@ -24,6 +25,15 @@ export function Sidebar() {
         </Link>
         <StatusRing />
       </div>
+      <button
+        type="button"
+        className={styles.jump}
+        onClick={() => window.dispatchEvent(new Event(OPEN_PALETTE_EVENT))}
+      >
+        <Icon name="search" size={15} />
+        <span>Jump to…</span>
+        <kbd>⌘K</kbd>
+      </button>
       <nav className={styles.scroll} aria-label="Sidebar">
         <ul className={styles.list}>
           {SIDEBAR_NAV.map((item) => (

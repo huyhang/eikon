@@ -1,9 +1,12 @@
-import { useRef, type PointerEvent } from 'react';
+import { useRef, type MouseEvent, type PointerEvent } from 'react';
+
+/** The modifier keys of the click, for ⌘/Ctrl/Shift-click behaviours. */
+export type PressModifiers = Pick<MouseEvent, 'metaKey' | 'ctrlKey' | 'shiftKey'>;
 
 const LONG_PRESS_MS = 480;
 
 /** Pointer handlers that call `onLongPress` after a hold, or `onPress` for a normal tap/click. */
-export function useLongPress(onPress: () => void, onLongPress?: () => void) {
+export function useLongPress(onPress: (modifiers: PressModifiers) => void, onLongPress?: () => void) {
   const timer = useRef<number | undefined>(undefined);
   const fired = useRef(false);
 
@@ -25,12 +28,12 @@ export function useLongPress(onPress: () => void, onLongPress?: () => void) {
     onContextMenu: (e: { preventDefault: () => void }) => {
       if (onLongPress) e.preventDefault();
     },
-    onClick: () => {
+    onClick: (e: MouseEvent) => {
       if (fired.current) {
         fired.current = false;
         return;
       }
-      onPress();
+      onPress(e);
     },
   };
 }

@@ -3,6 +3,7 @@ import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import type { ImageTile } from '@eikon/shared';
 import { computeJustifiedLayout, findRowOfItem } from '../../core/justifiedLayout';
 import { DENSITY_ROW_HEIGHTS } from '../../core/gestures';
+import type { PressModifiers } from '../../hooks/useLongPress';
 import { Scrubber } from './Scrubber';
 import { Tile } from './Tile';
 import { useDensityGestures } from './useDensityGestures';
@@ -18,7 +19,10 @@ interface JustifiedGridProps {
   tiles: ImageTile[];
   contextKey: string;
   density: number;
-  onOpen: (index: number) => void;
+  onPress: (index: number, modifiers: PressModifiers) => void;
+  onLongPress?: (index: number) => void;
+  /** Ids currently selected; undefined when not in selection mode. */
+  selectedIds?: ReadonlySet<number>;
   onDensityStep?: (delta: 1 | -1) => void;
   /** Show only this many rows (no virtualisation, no scrubber) — for compact sections. */
   maxRows?: number;
@@ -32,7 +36,9 @@ export function JustifiedGrid({
   tiles,
   contextKey,
   density,
-  onOpen,
+  onPress,
+  onLongPress,
+  selectedIds,
   onDensityStep,
   maxRows,
   gap = 3,
@@ -111,7 +117,9 @@ export function JustifiedGrid({
                   tile={tile}
                   index={item.index}
                   contextKey={contextKey}
-                  onOpen={onOpen}
+                  onPress={onPress}
+                  onLongPress={onLongPress}
+                  selected={selectedIds ? selectedIds.has(tile.id) : undefined}
                   style={{ left: item.left, width: item.width, height: row.height }}
                 />
               );
