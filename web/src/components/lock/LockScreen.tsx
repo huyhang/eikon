@@ -23,6 +23,9 @@ export function secondsLeft(until: number | null, now: number): number {
   return until === null ? 0 : Math.max(0, Math.ceil((until - now) / 1000));
 }
 
+/** 0..count-1, for lists whose items are identical and identified only by position. */
+const positions = (count: number) => Array.from({ length: count }, (_unused, i) => i);
+
 export function LockScreen({ numeric, onUnlocked }: LockScreenProps) {
   const api = useApi();
   const { now } = useDependencies();
@@ -100,11 +103,10 @@ export function LockScreen({ numeric, onUnlocked }: LockScreenProps) {
         <div ref={scope} className={styles.entry}>
           {numeric ? (
             <div className={styles.dots} aria-label={`${passcode.length} digits entered`} role="status">
-              {passcode.length === 0 ? (
-                <span className={styles.dotsHint}>• • • •</span>
-              ) : (
-                Array.from(passcode).map((_, i) => <span key={i} className={styles.dot} />)
-              )}
+              {/* One dot per digit typed; no placeholder dots, since the passcode length isn't known. */}
+              {positions(passcode.length).map((position) => (
+                <span key={position} className={styles.dot} />
+              ))}
             </div>
           ) : (
             <input
@@ -174,11 +176,11 @@ function Mosaic() {
   return (
     <div className={styles.mosaic} aria-hidden="true">
       <div className={styles.mosaicGrid}>
-        {cells.slice(0, 48).map((p, i) => {
-          const url = placeholderToDataUrl(p);
+        {positions(Math.min(cells.length, 48)).map((position) => {
+          const url = placeholderToDataUrl(cells[position]!);
           return (
             <div
-              key={i}
+              key={position}
               className={styles.cell}
               style={url ? { backgroundImage: `url(${url})` } : undefined}
             />

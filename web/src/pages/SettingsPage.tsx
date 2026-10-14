@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { RATINGS, type Rating } from '@eikon/shared';
 import {
@@ -127,8 +127,13 @@ function ThresholdSlider({
   value: number;
   onCommit: (v: number) => void;
 }) {
+  // Follow the saved value when it changes elsewhere (React's "adjust state on prop change" pattern).
   const [draft, setDraft] = useState(value);
-  useEffect(() => setDraft(value), [value]);
+  const [synced, setSynced] = useState(value);
+  if (value !== synced) {
+    setSynced(value);
+    setDraft(value);
+  }
   return (
     <Row label={label} detail={`Show tags at ${formatPercent(draft)} confidence or higher`}>
       <input

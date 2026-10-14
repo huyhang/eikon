@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { flushSync } from 'react-dom';
 import clsx from 'clsx';
 import { AnimatePresence, motion, useReducedMotion, useTransform, type MotionValue } from 'motion/react';
 import { thumbUrl, type ImageTile } from '@eikon/shared';
@@ -7,7 +8,8 @@ import type { SwipeOutcome } from '../../core/gestures';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { useMediaQuery, WIDE_VIEWER_QUERY } from '../../hooks/useMediaQuery';
 import { InfoPanel, INFO_PANEL_WIDTH } from './InfoPanel';
-import { shareOrDownload } from './share';
+import { shareMessage, shareOrDownload } from './share';
+import { useToasts } from '../../context/Toasts';
 import { useViewerGestures } from './useViewerGestures';
 import { useViewerMotion } from './useViewerMotion';
 import { NavArrows, Toolbar, TopBar } from './ViewerChrome';
@@ -46,7 +48,7 @@ function useViewerKeyboard(
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).closest('input, textarea')) return;
-      const action = viewerKeyAction(e.key, state);
+      const action = viewerKeyAction(e, state);
       if (action) handlers[action]();
     };
     window.addEventListener('keydown', onKey);
@@ -76,6 +78,12 @@ export function Viewer({
   const wide = useMediaQuery(WIDE_VIEWER_QUERY);
   const viewport = useViewportSize();
   const [index, setIndex] = useState(initialIndex);
+  // A deep link or Back can point the open viewer at another image.
+  const [openedAt, setOpenedAt] = useState(initialIndex);
+  if (initialIndex !== openedAt) {
+    setOpenedAt(initialIndex);
+    setIndex(initialIndex);
+  }
   const [infoOpen, setInfoOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [chrome, setChrome] = useState(true);
@@ -91,13 +99,12 @@ export function Viewer({
   const tile = tiles[index];
   const detail = useImageDetail(tile?.id ?? null).data;
   const favorite = useToggleFavorite(tile?.id ?? -1);
+  const toasts = useToasts();
   const motionApi = useViewerMotion({ tile, contextKey, stage, padding, reduceMotion });
   const { trackX, flipX, flipY, flipScale, backdrop, springBack } = motionApi;
 
   useBodyScrollLock(true);
   usePreloadNeighbours(tiles, index);
-  useEffect(() => setIndex(initialIndex), [initialIndex]);
-  useLayoutEffect(() => trackX.set(0), [index, trackX]);
 
   const requestClose = useCallback(async () => {
     if (closing.current || !tile) return;
@@ -113,12 +120,21 @@ export function Viewer({
       if (next < 0 || next >= tiles.length) return springBack();
       setEditing(false);
       void motionApi.slide(direction, stage.width + SLIDE_GAP).then(() => {
-        setIndex(next);
+        // Commit the new slide before re-centring the track, in the same frame, so nothing flashes.
+        flushSync(() => setIndex(next));
+        trackX.set(0);
         onIndexChange(next);
       });
     },
-    [index, tiles.length, stage.width, motionApi, springBack, onIndexChange],
+    [index, tiles.length, stage.width, motionApi, springBack, trackX, onIndexChange],
   );
+
+  const share = async () => {
+    if (!detail) return;
+    const outcome = await shareOrDownload(detail, { navigator, fetch: window.fetch.bind(window), document });
+    const message = shareMessage(outcome, detail);
+    if (message) toasts.show(message.text, message.tone);
+  };
 
   const toggleFavorite = useCallback(() => {
     if (detail) favorite.mutate(!detail.favorite);
@@ -220,9 +236,7 @@ export function Viewer({
           favorite={Boolean(detail?.favorite)}
           infoOpen={infoOpen}
           editing={editing}
-          onShare={() =>
-            detail && void shareOrDownload(detail, { navigator, fetch: window.fetch.bind(window), document })
-          }
+          onShare={() => void share()}
           onToggleFavorite={toggleFavorite}
           onToggleInfo={() => setInfoOpen((o) => !o)}
           onEdit={openEditor}

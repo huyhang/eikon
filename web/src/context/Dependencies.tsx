@@ -6,6 +6,8 @@ export interface Dependencies {
   api: ApiClient;
   store: KeyValueStore;
   now: () => number;
+  /** Uniform in [0, 1); injected so shuffles are testable. */
+  random: () => number;
 }
 
 const DependenciesContext = createContext<Dependencies | null>(null);
@@ -21,3 +23,9 @@ export function useDependencies(): Dependencies {
 }
 
 export const useApi = (): ApiClient => useDependencies().api;
+
+/** A fresh seed for a stable shuffle. */
+export function useNewSeed(): () => number {
+  const { random } = useDependencies();
+  return () => Math.floor(random() * 1_000_000_000);
+}

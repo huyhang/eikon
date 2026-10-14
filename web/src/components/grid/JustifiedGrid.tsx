@@ -1,12 +1,4 @@
-import {
-  useCallback,
-  useImperativeHandle,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type Ref,
-} from 'react';
+import { useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type Ref } from 'react';
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import type { ImageTile } from '@eikon/shared';
 import { computeJustifiedLayout, findRowOfItem } from '../../core/justifiedLayout';
@@ -95,8 +87,7 @@ export function JustifiedGrid({
     [layout, scrollMargin],
   );
 
-  const step = useCallback((delta: 1 | -1) => onDensityStep?.(delta), [onDensityStep]);
-  useDensityGestures(containerRef, step);
+  useDensityGestures(containerRef, onDensityStep);
 
   const items = virtualizer.getVirtualItems();
   const showScrubber = maxRows === undefined && layout.height > window.innerHeight * SCRUBBER_MIN_SCREENS;

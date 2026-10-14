@@ -1,17 +1,20 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Rating } from '@eikon/shared';
 import { maxRatingFor, type SafeModePrefs } from '../core/safeMode';
 import type { SearchState } from '../core/searchState';
 import { loadPrefs, pushRecentSearch, savePrefs, type Prefs, type ThemePref } from '../services/prefs';
 import { useDependencies } from './Dependencies';
 
-interface PrefsContextValue extends Prefs {
-  maxRating: Rating | undefined;
+interface PrefsActions {
   setTheme(theme: ThemePref): void;
   setSafeMode(patch: Partial<SafeModePrefs>): void;
   setDensity(density: number): void;
   addRecentSearch(search: SearchState): void;
   clearRecentSearches(): void;
+}
+
+interface PrefsContextValue extends Prefs, PrefsActions {
+  maxRating: Rating | undefined;
 }
 
 const PrefsContext = createContext<PrefsContextValue | null>(null);
@@ -39,20 +42,25 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     return () => media.removeEventListener('change', onChange);
   }, [prefs.theme]);
 
-  const update = useCallback((patch: Partial<Prefs>) => setPrefs((p) => ({ ...p, ...patch })), []);
-
-  const value = useMemo<PrefsContextValue>(
-    () => ({
-      ...prefs,
-      maxRating: maxRatingFor(prefs.safeMode),
+  // Actions never change identity, so effects that depend on them don't re-run on every prefs change.
+  const actions = useMemo<PrefsActions>(() => {
+    const update = (patch: Partial<Prefs>) => setPrefs((p) => ({ ...p, ...patch }));
+    return {
       setTheme: (theme) => update({ theme }),
       setSafeMode: (patch) => setPrefs((p) => ({ ...p, safeMode: { ...p.safeMode, ...patch } })),
       setDensity: (density) => update({ density }),
       addRecentSearch: (search) =>
-        setPrefs((p) => ({ ...p, recentSearches: pushRecentSearch(p.recentSearches, search) })),
+        setPrefs((p) => {
+          const recentSearches = pushRecentSearch(p.recentSearches, search);
+          return recentSearches === p.recentSearches ? p : { ...p, recentSearches };
+        }),
       clearRecentSearches: () => update({ recentSearches: [] }),
-    }),
-    [prefs, update],
+    };
+  }, []);
+
+  const value = useMemo<PrefsContextValue>(
+    () => ({ ...prefs, ...actions, maxRating: maxRatingFor(prefs.safeMode) }),
+    [prefs, actions],
   );
 
   return <PrefsContext.Provider value={value}>{children}</PrefsContext.Provider>;

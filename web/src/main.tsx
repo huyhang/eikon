@@ -15,6 +15,7 @@ const dependencies = {
   api: new HttpApiClient({ onUnauthorized: lockSignal.fire }),
   store: new LocalStorageStore(window.localStorage),
   now: () => Date.now(),
+  random: Math.random,
 };
 const queryClient = new QueryClient({
   defaultOptions: {

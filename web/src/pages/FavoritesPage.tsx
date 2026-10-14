@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useImages } from '../api/hooks';
 import { pluralize } from '../core/format';
-import { hasCriteria, searchToImageQuery } from '../core/searchState';
+import { emptyResultMessage, hasCriteria, searchToImageQuery } from '../core/searchState';
 import { Spinner } from '../components/common/Controls';
 import { EmptyState } from '../components/common/EmptyState';
 import { ImageCollection } from '../components/grid/ImageCollection';
@@ -33,7 +33,7 @@ export function FavoritesPage() {
       ) : results.data.tiles.length === 0 ? (
         filtering ? (
           <EmptyState icon="search" title="No matching favorites">
-            <p>None of your favorites have all of these tags.</p>
+            <p>{emptyResultMessage(state, { noun: 'favorites' })}</p>
           </EmptyState>
         ) : (
           <EmptyState icon="heart" title="No favorites yet">

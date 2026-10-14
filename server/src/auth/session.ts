@@ -58,10 +58,11 @@ function parseToken(token: string | undefined): ParsedToken | null {
   return { payload: `${version}.${issued}.${expires}`, issuedAt, expiresAt, signature };
 }
 
+const sha256 = (s: string) => createHash('sha256').update(s).digest();
+
 /** Constant-time string comparison (hashes first so lengths never leak). */
 export function safeEqual(a: string, b: string): boolean {
-  const digest = (s: string) => createHash('sha256').update(s).digest();
-  return timingSafeEqual(digest(a), digest(b));
+  return timingSafeEqual(sha256(a), sha256(b));
 }
 
 export function isNumericPasscode(passcode: string): boolean {

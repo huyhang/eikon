@@ -1,16 +1,24 @@
-import { useEffect, type RefObject } from 'react';
+import { useEffect, useEffectEvent, type RefObject } from 'react';
 import { densityStepForPinch } from '../../core/gestures';
 
 const WHEEL_STEP = 60;
 
-/** Pinch (touch) and ctrl/⌘+wheel (trackpad pinch) on the grid change its density. */
+/**
+ * Pinch (touch) and ctrl/⌘+wheel (trackpad pinch) on the grid change its density. Without an
+ * `onStep` handler nothing is intercepted, so the browser's own zoom keeps working.
+ */
 export function useDensityGestures(
   ref: RefObject<HTMLElement | null>,
-  onStep: (delta: 1 | -1) => void,
+  onStep: ((delta: 1 | -1) => void) | undefined,
 ): void {
+  const enabled = onStep !== undefined;
+  // An effect event keeps the listeners attached for the whole gesture even though the handler
+  // changes after every step; re-subscribing mid-pinch used to reset the pinch and stop it at one step.
+  const step = useEffectEvent((delta: 1 | -1) => onStep?.(delta));
+
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || !enabled) return;
     let wheelAccumulator = 0;
     let pinchBase = 0;
 
@@ -22,7 +30,7 @@ export function useDensityGestures(
       e.preventDefault();
       wheelAccumulator += e.deltaY;
       if (Math.abs(wheelAccumulator) >= WHEEL_STEP) {
-        onStep(wheelAccumulator < 0 ? 1 : -1);
+        step(wheelAccumulator < 0 ? 1 : -1);
         wheelAccumulator = 0;
       }
     };
@@ -32,9 +40,9 @@ export function useDensityGestures(
     const onTouchMove = (e: TouchEvent) => {
       if (e.touches.length !== 2 || pinchBase === 0) return;
       e.preventDefault();
-      const step = densityStepForPinch(distance(e.touches) / pinchBase);
-      if (step !== 0) {
-        onStep(step);
+      const delta = densityStepForPinch(distance(e.touches) / pinchBase);
+      if (delta !== 0) {
+        step(delta);
         pinchBase = distance(e.touches);
       }
     };
@@ -52,5 +60,5 @@ export function useDensityGestures(
       el.removeEventListener('touchmove', onTouchMove);
       el.removeEventListener('touchend', onTouchEnd);
     };
-  }, [ref, onStep]);
+  }, [ref, enabled]);
 }

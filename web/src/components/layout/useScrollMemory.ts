@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect } from 'react';
+import { useEffect, useEffectEvent, useLayoutEffect } from 'react';
 import { useLocation, useNavigationType } from 'react-router';
 
 const positions = new Map<string, number>();
@@ -19,10 +19,11 @@ export function useScrollMemory(): void {
     return () => window.removeEventListener('scroll', save);
   }, [location.key]);
 
-  useLayoutEffect(() => {
+  // Reads the latest location and navigation type, but only runs when the page (path) changes.
+  const enterPage = useEffectEvent((_pathname: string) => {
     if (navigationType !== 'POP') {
       window.scrollTo(0, 0);
-      return;
+      return undefined;
     }
     const target = positions.get(location.key) ?? 0;
     let attempts = 0;
@@ -34,7 +35,7 @@ export function useScrollMemory(): void {
     };
     restore();
     return () => cancelAnimationFrame(frame);
-    // Only when the page (path) changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
+  });
+
+  useLayoutEffect(() => enterPage(location.pathname), [location.pathname]);
 }

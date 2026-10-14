@@ -43,6 +43,11 @@ describe('formatBytes', () => {
     { bytes: 5 * 1024 * 1024, expected: '5.0 MB' },
     { bytes: 250 * 1024 * 1024, expected: '250 MB' },
     { bytes: 3.2 * 1024 ** 3, expected: '3.2 GB' },
+    { bytes: 1023, expected: '1023 B' },
+    { bytes: 1048575, expected: '1.0 MB' },
+    { bytes: 1024 * 1024 - 1024 * 0.4, expected: '1.0 MB' },
+    { bytes: 1023.4 * 1024, expected: '1023 KB' },
+    { bytes: 1024 ** 4 * 2048, expected: '2048 TB' },
     { bytes: -1, expected: '—' },
   ])('$bytes → $expected', ({ bytes, expected }) => expect(formatBytes(bytes)).toBe(expected));
 });

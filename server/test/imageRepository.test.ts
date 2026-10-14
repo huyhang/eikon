@@ -51,7 +51,7 @@ describe('ImageRepository.list', () => {
   it('random order is stable for a seed and covers every image', () => {
     const a = names({ sort: 'random', seed: 3 });
     expect(names({ sort: 'random', seed: 3 })).toEqual(a);
-    expect([...a].sort()).toEqual(['faint', 'night', 'sky', 'untagged']);
+    expect(a.toSorted()).toEqual(['faint', 'night', 'sky', 'untagged']);
   });
 
   it('respects lowered thresholds', () => {

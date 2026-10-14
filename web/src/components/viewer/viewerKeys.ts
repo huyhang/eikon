@@ -8,9 +8,21 @@ export interface ViewerKeyState {
   wide: boolean;
 }
 
-/** Maps a key press to what the viewer should do. Esc peels back one layer at a time. */
-export function viewerKeyAction(key: string, state: ViewerKeyState): ViewerKeyAction {
-  switch (key) {
+/** The parts of a KeyboardEvent the viewer looks at. */
+export interface ViewerKeyPress {
+  key: string;
+  metaKey?: boolean;
+  ctrlKey?: boolean;
+  altKey?: boolean;
+}
+
+/**
+ * Maps a key press to what the viewer should do. Esc peels back one layer at a time.
+ * Presses with ⌘, Ctrl or Alt belong to the browser (⌘F is find, not favourite).
+ */
+export function viewerKeyAction(press: ViewerKeyPress, state: ViewerKeyState): ViewerKeyAction {
+  if (press.metaKey || press.ctrlKey || press.altKey) return null;
+  switch (press.key) {
     case 'Escape':
       if (state.editing) return 'stopEditing';
       if (state.infoOpen && !state.wide) return 'closeInfo';

@@ -15,16 +15,19 @@ export function pluralize(n: number, singular: string, plural = `${singular}s`):
 
 const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB'];
 
+const byteDigits = (value: number, unit: number) => (unit === 0 || value >= 100 ? 0 : 1);
+
 export function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) return '—';
   let value = bytes;
   let unit = 0;
-  while (value >= 1024 && unit < BYTE_UNITS.length - 1) {
+  const last = BYTE_UNITS.length - 1;
+  // Move up a unit while the *rounded* value would read 1024 or more (1048575 B is "1.0 MB", not "1024 KB").
+  while (unit < last && Number(value.toFixed(byteDigits(value, unit))) >= 1024) {
     value /= 1024;
     unit++;
   }
-  const digits = unit === 0 || value >= 100 ? 0 : 1;
-  return `${value.toFixed(digits)} ${BYTE_UNITS[unit]}`;
+  return `${value.toFixed(byteDigits(value, unit))} ${BYTE_UNITS[unit]}`;
 }
 
 export function formatDate(epochMs: number, locale = 'en-US'): string {

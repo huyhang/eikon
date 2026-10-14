@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import type { GroupKind, ImageSort } from '@eikon/shared';
 import { useGroup, useImages } from '../api/hooks';
+import { useNewSeed } from '../context/Dependencies';
 import { usePrefs } from '../context/Prefs';
 import { pluralize } from '../core/format';
 import { clampDensity, defaultDensity } from '../core/gestures';
@@ -25,7 +26,8 @@ const SORTS: { value: ImageSort; label: string }[] = [
 export function GroupPage({ kind }: { kind: GroupKind }) {
   const id = Number(useParams().id);
   const [sort, setSort] = useState<ImageSort>('newest');
-  const [seed] = useState(() => Math.floor(Math.random() * 1_000_000));
+  const newSeed = useNewSeed();
+  const [seed] = useState(newSeed);
   const group = useGroup(id);
   const images = useImages({ group: id, sort, ...(sort === 'random' ? { seed } : {}) }, Number.isInteger(id));
   const { density, setDensity } = usePrefs();

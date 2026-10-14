@@ -36,7 +36,7 @@ describe('fakeTagResult', () => {
       expect(t.confidence).toBeGreaterThan(0);
       expect(t.confidence).toBeLessThan(1);
     });
-    expect(Object.keys(rating).sort()).toEqual(['explicit', 'general', 'questionable', 'sensitive']);
+    expect(Object.keys(rating).toSorted()).toEqual(['explicit', 'general', 'questionable', 'sensitive']);
   });
 
   it('puts extra analysis tags first', () => {
@@ -54,7 +54,7 @@ describe('helpers', () => {
   ])('fakeRating with first roll %d picks %s', (roll, expected) => {
     let first = true;
     const scores = fakeRating(() => (first ? ((first = false), roll) : 0.5));
-    const winner = Object.entries(scores).sort((x, y) => y[1] - x[1])[0]![0];
+    const winner = Object.entries(scores).toSorted((x, y) => y[1] - x[1])[0]![0];
     expect(winner).toBe(expected);
   });
 

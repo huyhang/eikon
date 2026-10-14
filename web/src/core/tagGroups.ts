@@ -27,6 +27,6 @@ export function groupTagsByCategory(tags: readonly ImageTag[]): TagGroup[] {
   return CATEGORY_ORDER.map((category) => ({
     category,
     label: CATEGORY_LABELS[category],
-    tags: tags.filter((t) => t.category === category).sort(compareTags),
+    tags: tags.filter((t) => t.category === category).toSorted(compareTags),
   })).filter((group) => group.tags.length > 0);
 }

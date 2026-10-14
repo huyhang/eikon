@@ -10,11 +10,14 @@ import {
   useSavedSearches,
   useTopTags,
 } from '../api/hooks';
+import { useNewSeed } from '../context/Dependencies';
 import { usePrefs } from '../context/Prefs';
 import { formatCount } from '../core/format';
 import {
   describeSearch,
+  emptyResultMessage,
   hasCriteria,
+  searchFromParams,
   searchKey,
   searchToImageQuery,
   searchToParams,
@@ -52,6 +55,7 @@ export function SearchPage() {
   );
   const groupName = groups.find((g) => g.id === state.group)?.name;
   const { addRecentSearch } = usePrefs();
+  const newSeed = useNewSeed();
 
   useRememberSearch(state, active && (results.data?.total ?? 0) > 0, addRecentSearch);
 
@@ -73,7 +77,9 @@ export function SearchPage() {
               label="Sort"
               value={state.sort}
               options={SORTS}
-              onChange={(sort) => dispatch({ type: 'setSort', sort })}
+              onChange={(sort) =>
+                dispatch({ type: 'setSort', sort, seed: sort === 'random' ? newSeed() : undefined })
+              }
             />
             {active && results.data && (
               <span className={styles.count} aria-live="polite">
@@ -108,7 +114,7 @@ export function SearchPage() {
         </div>
       ) : results.data.tiles.length === 0 ? (
         <EmptyState icon="search" title="No matches">
-          <p>No images have all of these tags{groupName ? ` in ${groupName}` : ''}. Try removing one.</p>
+          <p>{emptyResultMessage(state, { groupName })}</p>
         </EmptyState>
       ) : (
         <div className={results.isPlaceholderData ? styles.stale : undefined}>
@@ -119,18 +125,18 @@ export function SearchPage() {
   );
 }
 
+/** Remembers a search once it has stayed on screen with results for a moment. */
 function useRememberSearch(
   state: SearchState,
   worthRemembering: boolean,
   remember: (s: SearchState) => void,
 ) {
+  // The key carries all the criteria, so the effect rebuilds the search from it.
   const key = searchKey(state);
   useEffect(() => {
     if (!worthRemembering) return;
-    const timer = window.setTimeout(() => remember(state), 1200);
+    const timer = window.setTimeout(() => remember(searchFromParams(new URLSearchParams(key))), 1200);
     return () => window.clearTimeout(timer);
-    // `state` is captured by key.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, worthRemembering, remember]);
 }
 
@@ -201,9 +207,14 @@ function PinButton({ state, groupName }: { state: SearchState; groupName?: strin
   );
 }
 
+const sameTags = (a: string[], b: string[]) => a.length === b.length && a.every((t) => b.includes(t));
+
 function matches(query: { tags: string[]; exclude: string[]; group?: number }, state: SearchState): boolean {
-  const same = (a: string[], b: string[]) => a.length === b.length && a.every((t) => b.includes(t));
-  return same(query.tags, state.include) && same(query.exclude, state.exclude) && query.group === state.group;
+  return (
+    sameTags(query.tags, state.include) &&
+    sameTags(query.exclude, state.exclude) &&
+    query.group === state.group
+  );
 }
 
 function SearchStart({ onPick }: { onPick: (tag: string) => void }) {

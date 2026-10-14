@@ -10,18 +10,19 @@ import {
 import type { AppDeps } from '../deps';
 import { badRequest, notFound, parseId, parseLimit, type Query } from '../params';
 
+const tagNames = (v: unknown): string[] =>
+  Array.isArray(v)
+    ? v
+        .filter((t): t is string => typeof t === 'string')
+        .map(normalizeTagName)
+        .filter(Boolean)
+    : [];
+
 /** Validates a saved query from the client; returns null if malformed. */
 export function sanitizeSavedQuery(input: unknown): SavedQuery | null {
   if (typeof input !== 'object' || input === null) return null;
   const raw = input as Record<string, unknown>;
-  const names = (v: unknown) =>
-    Array.isArray(v)
-      ? v
-          .filter((t): t is string => typeof t === 'string')
-          .map(normalizeTagName)
-          .filter(Boolean)
-      : [];
-  const query: SavedQuery = { tags: names(raw.tags), exclude: names(raw.exclude) };
+  const query: SavedQuery = { tags: tagNames(raw.tags), exclude: tagNames(raw.exclude) };
   if (typeof raw.group === 'number' && Number.isInteger(raw.group) && raw.group > 0) query.group = raw.group;
   return query.tags.length || query.exclude.length || query.group ? query : null;
 }

@@ -56,9 +56,10 @@ export function artworkSvg(spec: ArtworkSpec, random: Random): string {
     .join('');
   const hills = Array.from({ length: 3 }, (_, i) => {
     const base = h * (0.62 + i * 0.12);
-    const peaks = Array.from({ length: 5 }, (_, k) => `${(w / 4) * k},${base - random() * h * 0.18}`).join(
-      ' L',
-    );
+    const peaks = Array.from(
+      { length: 5 },
+      (_unused, k) => `${(w / 4) * k},${base - random() * h * 0.18}`,
+    ).join(' L');
     return `<path d="M0,${h} L${peaks} L${w},${base} L${w},${h} Z" fill="${hsl(hue + 180 + i * 10, 35, 18 + i * 8)}" opacity="0.92"/>`;
   }).join('');
   const fontSize = Math.round(Math.min(w, h) * 0.045);

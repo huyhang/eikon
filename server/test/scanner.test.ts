@@ -36,7 +36,7 @@ describe('Scanner', () => {
       repos.groups
         .list({})
         .map((g) => `${g.kind}:${g.name}`)
-        .sort(),
+        .toSorted(),
     ).toEqual(['collection:Mood', 'illustrator:Ana']);
     expect(thumbnails.stored.has('h-A:sm')).toBe(true);
     expect(onImagesAdded).toHaveBeenCalledOnce();

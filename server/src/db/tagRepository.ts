@@ -48,7 +48,7 @@ export class TagRepository {
         source: r.source,
         confidence: r.source === 'manual' ? null : r.confidence,
       }))
-      .sort(compareImageTags);
+      .toSorted(compareImageTags);
   }
 
   /** Replaces automatic tags of an image, leaving manual and removed ones untouched. */

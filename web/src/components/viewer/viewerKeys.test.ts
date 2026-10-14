@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { viewerKeyAction, type ViewerKeyState } from './viewerKeys';
+import { viewerKeyAction, type ViewerKeyPress, type ViewerKeyState } from './viewerKeys';
 
 const closed: ViewerKeyState = { editing: false, infoOpen: false, wide: false };
 
@@ -16,6 +16,16 @@ describe('viewerKeyAction', () => {
     ['e', closed, 'edit'],
     ['x', closed, null],
   ])('%s with %j → %s', (key, state, expected) => {
-    expect(viewerKeyAction(key, state)).toBe(expected);
+    expect(viewerKeyAction({ key }, state)).toBe(expected);
+  });
+
+  it.each<[string, ViewerKeyPress]>([
+    ['⌘F (find)', { key: 'f', metaKey: true }],
+    ['Ctrl+F (find)', { key: 'f', ctrlKey: true }],
+    ['⌘← (back)', { key: 'ArrowLeft', metaKey: true }],
+    ['Alt+E', { key: 'e', altKey: true }],
+    ['Ctrl+I', { key: 'i', ctrlKey: true }],
+  ])('leaves %s to the browser', (_, press) => {
+    expect(viewerKeyAction(press, closed)).toBeNull();
   });
 });

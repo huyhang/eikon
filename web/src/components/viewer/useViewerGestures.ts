@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
 import { lockAxis, resolveSwipe, type SwipeAxis, type SwipeOutcome } from '../../core/gestures';
 
 export interface ViewerGestureCallbacks {
@@ -36,7 +36,9 @@ export function useViewerGestures(
   callbacks: ViewerGestureCallbacks,
 ) {
   const latest = useRef(callbacks);
-  latest.current = callbacks;
+  useLayoutEffect(() => {
+    latest.current = callbacks;
+  });
 
   useEffect(() => {
     const el = ref.current;

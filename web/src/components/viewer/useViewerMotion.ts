@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect } from 'react';
+import { useCallback, useEffectEvent, useLayoutEffect } from 'react';
 import { animate, useMotionValue } from 'motion/react';
 import type { ImageTile } from '@eikon/shared';
 import { flipToTarget, type Rect } from '../../core/geometry';
@@ -49,7 +49,7 @@ export function useViewerMotion({ tile, contextKey, stage, padding, reduceMotion
   );
 
   // Expand from the grid thumbnail, once, on mount.
-  useLayoutEffect(() => {
+  const expandFromGrid = useEffectEvent(() => {
     if (!tile) return;
     const target = reduceMotion ? null : visibleTileRect(contextKey, tile.id);
     if (target) {
@@ -65,8 +65,8 @@ export function useViewerMotion({ tile, contextKey, stage, padding, reduceMotion
       void animate(flipScale, 1, { duration: 0.25 });
     }
     void animate(backdrop, 1, { duration: 0.28 });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  });
+  useLayoutEffect(() => expandFromGrid(), []);
 
   const springBack = useCallback(() => {
     void animate(trackX, 0, SPRING);

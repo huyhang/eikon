@@ -70,7 +70,7 @@ describe('TagWorker.runOnce', () => {
   it('tags pending images from their large thumbnail and reports status', async () => {
     const { repos, tagger, worker } = await setup();
     expect(await worker.runOnce()).toBe('worked');
-    expect(tagger.tagged.sort()).toEqual(['lg0', 'lg1']);
+    expect(tagger.tagged.toSorted()).toEqual(['lg0', 'lg1']);
     expect(worker.status()).toMatchObject({
       pending: 0,
       done: 2,

@@ -38,7 +38,7 @@ describe('ScanScheduler', () => {
   ])('a scan requested $when runs without waiting for the interval', async ({ duringScan }) => {
     const sleep = new ManualSleep();
     let scans = 0;
-    let finishScan: () => void = () => {};
+    let finishScan: (() => void) | undefined;
     const scan = () =>
       new Promise<void>((resolve) => {
         scans += 1;
@@ -48,7 +48,7 @@ describe('ScanScheduler', () => {
     scheduler.start();
     await flush();
     if (duringScan) scheduler.requestScan();
-    finishScan();
+    finishScan?.();
     await flush();
     if (!duringScan) scheduler.requestScan();
     await flush();

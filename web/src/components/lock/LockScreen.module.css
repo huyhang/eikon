@@ -88,12 +88,6 @@
   justify-content: center;
 }
 
-.dotsHint {
-  color: rgba(255, 255, 255, 0.28);
-  letter-spacing: 6px;
-  font-size: 18px;
-}
-
 .dot {
   width: 13px;
   height: 13px;

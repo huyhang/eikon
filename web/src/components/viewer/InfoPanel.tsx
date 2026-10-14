@@ -75,6 +75,8 @@ export function InfoPanel({ detail, wide, onClose, ...tagProps }: InfoPanelProps
   );
 }
 
+const unique = <T extends { id: number }>(list: T[]) => [...new Map(list.map((g) => [g.id, g])).values()];
+
 function InfoContent({
   detail,
   editing,
@@ -84,7 +86,6 @@ function InfoContent({
 }: { detail: ImageDetail } & Omit<InfoPanelProps, 'detail' | 'wide' | 'onClose'>) {
   const illustrators = detail.files.filter((f) => f.group.kind === 'illustrator').map((f) => f.group);
   const collections = detail.files.filter((f) => f.group.kind === 'collection').map((f) => f.group);
-  const unique = <T extends { id: number }>(list: T[]) => [...new Map(list.map((g) => [g.id, g])).values()];
 
   return (
     <div className={styles.content}>

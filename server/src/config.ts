@@ -56,11 +56,7 @@ function list(env: Env, key: string, fallback: string[] = []): string[] {
 
 function url(env: Env, key: string, fallback: string): string {
   const value = optional(env, key) ?? fallback;
-  try {
-    new URL(value);
-  } catch {
-    throw new ConfigError(`${key} must be a URL, got "${value}"`);
-  }
+  if (!URL.canParse(value)) throw new ConfigError(`${key} must be a URL, got "${value}"`);
   return value;
 }
 

@@ -14,7 +14,7 @@ function libraryWith(files: string[]): string {
 }
 
 async function listedPaths(root: string): Promise<string[]> {
-  return (await new FsLibrarySource(root).list()).map((e) => e.relPath).sort();
+  return (await new FsLibrarySource(root).list()).map((e) => e.relPath).toSorted();
 }
 
 describe('FsLibrarySource.list', () => {

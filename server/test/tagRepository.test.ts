@@ -120,6 +120,6 @@ describe('helpers', () => {
       { name: 'z', category: 'character' as const, confidence: 0.9, source: 'auto' as const },
       { name: 'm', category: 'general' as const, confidence: null, source: 'manual' as const },
     ];
-    expect([...tags].sort(compareImageTags).map((t) => t.name)).toEqual(['z', 'm', 'a', 'b']);
+    expect(tags.toSorted(compareImageTags).map((t) => t.name)).toEqual(['z', 'm', 'a', 'b']);
   });
 });

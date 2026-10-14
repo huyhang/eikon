@@ -2,6 +2,7 @@ import { useId, useState, type KeyboardEvent } from 'react';
 import clsx from 'clsx';
 import type { TagCount } from '@eikon/shared';
 import { useTagSuggestions } from '../../api/hooks';
+import { parseTagInput, withTypedPrefix } from '../../core/tagInput';
 import { enterChoice } from './enterChoice';
 import { TagPill } from './TagPill';
 import styles from './TagInput.module.css';
@@ -18,11 +19,13 @@ interface TagInputProps {
   'aria-label'?: string;
 }
 
+const NO_TAGS: string[] = [];
+
 /** Text input with category-coloured autocomplete. Enter picks the highlighted suggestion or the typed text. */
 export function TagInput({
   onSubmit,
   onBackspaceEmpty,
-  hide = [],
+  hide = NO_TAGS,
   placeholder,
   autoFocus,
   className,
@@ -32,7 +35,7 @@ export function TagInput({
   const [highlight, setHighlight] = useState(0);
   const [focused, setFocused] = useState(false);
   const listId = useId();
-  const term = text.replace(/^-/, '').replace(/^[a-z]+:/i, '');
+  const { term } = parseTagInput(text);
   const { data, isPlaceholderData, isFetching } = useTagSuggestions(term);
   const suggestions = (data ?? []).filter((s) => !hide.includes(s.name));
   const open = focused && text.trim().length > 0 && suggestions.length > 0;
@@ -44,10 +47,7 @@ export function TagInput({
     setHighlight(0);
   };
 
-  const pick = (suggestion: TagCount) => {
-    const prefix = text.startsWith('-') ? '-' : (/^([a-z]+:)/i.exec(text)?.[1] ?? '');
-    submit(prefix + suggestion.name);
-  };
+  const pick = (suggestion: TagCount) => submit(withTypedPrefix(text, suggestion.name));
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown' && open) {

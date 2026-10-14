@@ -163,20 +163,21 @@ describe('tailscale identity', () => {
   });
 });
 
+function service(options: { passcode?: string; tailscale?: boolean } = {}) {
+  const clock = new FakeClock(0);
+  const signer = new SessionSigner('s', options.passcode ?? '');
+  const auth = new AuthService({
+    passcode: options.passcode,
+    tailscaleSignIn: options.tailscale ?? false,
+    signer,
+    secrets: new MemorySecretStore('s'),
+    throttle: new LoginThrottle(clock),
+    clock,
+  });
+  return { auth, clock, signer };
+}
+
 describe('AuthService', () => {
-  function service(options: { passcode?: string; tailscale?: boolean } = {}) {
-    const clock = new FakeClock(0);
-    const signer = new SessionSigner('s', options.passcode ?? '');
-    const auth = new AuthService({
-      passcode: options.passcode,
-      tailscaleSignIn: options.tailscale ?? false,
-      signer,
-      secrets: new MemorySecretStore('s'),
-      throttle: new LoginThrottle(clock),
-      clock,
-    });
-    return { auth, clock, signer };
-  }
   const me = { login: 'me@example.com', name: 'Me' };
   const none: Credentials = { token: undefined, identity: null };
 
