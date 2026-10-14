@@ -1,11 +1,12 @@
 # Eikon on the Synology NAS. See docs/SETUP.md.
-#   cd /volume1/docker/eikon/deploy/nas && sudo docker compose up -d --build
+#   cd /volume1/docker/eikon/docker/nas && sudo docker compose up -d --build
 name: eikon
 
 services:
   eikon:
     build:
       context: ../..
+      dockerfile: docker/eikon/Dockerfile
     image: eikon:latest
     container_name: eikon
     restart: unless-stopped

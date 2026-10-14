@@ -8,7 +8,7 @@ GPU service that runs on **gpubox** and tags illustrations for Eikon with
 - `GET /health` → `{"status":"ok","model":"wd-eva02-large-tagger-v3","device":"cuda"}` (public)
 - `POST /v1/tag` with raw image bytes → `{"model", "rating": {...}, "tags": [{"name","category","confidence"}]}`
 
-Deployment on gpubox: see [`deploy/gpubox/README.md`](../deploy/gpubox/README.md).
+Deployment on gpubox: see [`docker/gpubox/README.md`](../docker/gpubox/README.md).
 
 ## Environment
 

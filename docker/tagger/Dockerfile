@@ -1,4 +1,5 @@
-# WD v3 tagger for Eikon. CUDA 12 + cuDNN 9 matches onnxruntime-gpu <1.27 (see pyproject.toml).
+# WD v3 tagger for Eikon (runs on gpubox). Build context: repository root.
+# CUDA 12 + cuDNN 9 matches onnxruntime-gpu <1.27 (see pyproject.toml).
 FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -14,8 +15,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY pyproject.toml ./
-COPY src ./src
+COPY tagger/pyproject.toml ./
+COPY tagger/src ./src
 RUN python3 -m venv /opt/venv && /opt/venv/bin/pip install ".[gpu]"
 
 RUN useradd --system --uid 10001 --create-home tagger \

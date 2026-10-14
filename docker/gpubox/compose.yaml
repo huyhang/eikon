@@ -1,8 +1,12 @@
+# Eikon tagger on gpubox. See docker/gpubox/README.md.
+#   cd docker/gpubox && docker compose up -d --build
 name: eikon-tagger
 
 services:
   tagger:
-    build: ../../tagger
+    build:
+      context: ../..
+      dockerfile: docker/tagger/Dockerfile
     image: eikon-tagger:latest
     restart: unless-stopped
     env_file:

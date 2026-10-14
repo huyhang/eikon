@@ -56,7 +56,7 @@ See **[docs/SETUP.md](docs/SETUP.md)** for the full walkthrough: gpubox tagger, 
 | `tagger/` | The real GPU tagger: Python, FastAPI, ONNX Runtime, WD v3 |
 | `fake-tagger/` | The fake tagger for development |
 | `tools/` | Dev launcher and sample-library generator |
-| `deploy/nas/`, `deploy/gpubox/` | Docker Compose files and env templates |
+| `docker/` | Everything Docker: image builds (`docker/eikon`, `docker/tagger`) and Compose stacks (`docker/nas`, `docker/gpubox`) |
 
 Every component receives its dependencies through constructors or React context, with one composition root
 per process (`server/src/main.ts`, `tagger/src/eikon_tagger/main.py`), so each piece can be tested in isolation.

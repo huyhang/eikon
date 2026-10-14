@@ -23,10 +23,10 @@ Nothing is reachable from your LAN or the internet. Both containers listen on lo
 
 ## Part 1 — gpubox: start the tagger
 
-Follow [`deploy/gpubox/README.md`](../deploy/gpubox/README.md). When you finish, these should be true:
+Follow [`docker/gpubox/README.md`](../docker/gpubox/README.md). When you finish, these should be true:
 
 - `curl http://gpubox:7860/health` from your Mac returns `{"status":"ok", … "device":"cuda"}`.
-- You have written down the `TAGGER_TOKEN` you put in `deploy/gpubox/.env`.
+- You have written down the `TAGGER_TOKEN` you put in `docker/gpubox/.env`.
 
 Then note gpubox's full MagicDNS name. Your tailnet name is shown in the admin console under **DNS**
 (e.g. `tail1234.ts.net`), so gpubox is `gpubox.tail1234.ts.net`. From your Mac, check that it resolves:
@@ -115,7 +115,7 @@ No Git? Download the repository ZIP on your Mac, then upload and extract it to `
 ### 4.2 Configure
 
 ```bash
-cd /volume1/docker/eikon/deploy/nas
+cd /volume1/docker/eikon/docker/nas
 sudo cp .env.example .env
 id                                    # note uid= and gid=, e.g. uid=1026(you) gid=100(users)
 sudo vi .env                          # or edit it in File Station → Open with Text Editor
@@ -143,7 +143,7 @@ sudo chown -R <uid>:<gid> /volume1/docker/eikon-data
 ### 4.3 Build and start
 
 ```bash
-cd /volume1/docker/eikon/deploy/nas
+cd /volume1/docker/eikon/docker/nas
 sudo docker compose up -d --build     # first build takes a few minutes
 sudo docker compose logs -f           # Ctrl-C to stop following
 ```
@@ -160,7 +160,7 @@ sudo docker exec eikon node -e "fetch(process.env.EIKON_TAGGER_URL+'/health').th
 ```
 
 > **Prefer the GUI?** Container Manager → **Project → Create**. Set the path to
-> `/volume1/docker/eikon/deploy/nas`, choose "Use existing docker-compose.yml", and start it.
+> `/volume1/docker/eikon/docker/nas`, choose "Use existing docker-compose.yml", and start it.
 > You still need to create the `.env` file first.
 
 ---
@@ -193,7 +193,7 @@ your devices ──► https://<nas>.tail1234.ts.net:<HTTPS_PORT> ──tailscal
 | Port | Where it's set | Default | Notes |
 |---|---|---|---|
 | `HTTPS_PORT` | the `--https=` flag below | `443` | What your devices connect to. With 443 the URL needs no port number |
-| `EIKON_HOST_PORT` | `deploy/nas/.env` | `8080` | Loopback-only port on the NAS. Change it if another app already uses 8080 |
+| `EIKON_HOST_PORT` | `docker/nas/.env` | `8080` | Loopback-only port on the NAS. Change it if another app already uses 8080 |
 | container port | the image | `8080` | Never changes |
 
 The general command is:
@@ -253,7 +253,7 @@ The first scan and tagging run in the background. The ring next to the logo show
 | Add illustrations | Drop files into `Illustrators/<name>/` or `Collections/<name>/`. Eikon scans every 5 minutes, or use **Settings → Rescan library** |
 | Fix a tag | Open the image → swipe up → **Edit tags**. Your edits are never overwritten by re-tagging |
 | Change the passcode | Edit `EIKON_PASSCODE` in `.env`, then `sudo docker compose up -d`. This signs out every device |
-| Update Eikon | `cd /volume1/docker/eikon && sudo git pull && cd deploy/nas && sudo docker compose up -d --build` |
+| Update Eikon | `cd /volume1/docker/eikon && sudo git pull && cd docker/nas && sudo docker compose up -d --build` |
 | Back up | Back up `DATA_PATH`. Tags, favourites, and saved searches live in `eikon.db`; thumbnails can always be rebuilt |
 | Switch tagging model | Change `TAGGER_MODEL_REPO` on gpubox, restart the tagger, then use **Settings → Re-tag all** |
 | gpubox is off | Nothing breaks. New images wait in the queue and get tagged when gpubox is back |

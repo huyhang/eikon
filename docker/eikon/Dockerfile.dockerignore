@@ -1,0 +1,14 @@
+# The build context is the repository root; send only what the Eikon image needs.
+*
+!package.json
+!package-lock.json
+!tsconfig.base.json
+!shared
+!server
+!web
+!fake-tagger/package.json
+!tools/package.json
+**/node_modules
+**/dist
+**/*.log
+**/*.tsbuildinfo

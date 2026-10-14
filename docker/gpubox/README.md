@@ -25,7 +25,7 @@ Runs the Eikon tagger (WD v3 on the RTX 3090) in Docker and publishes it to the 
 ## 2. Start the tagger
 
 ```bash
-cd deploy/gpubox
+cd docker/gpubox
 cp .env.example .env          # set TAGGER_TOKEN (openssl rand -hex 32)
 docker compose up -d --build
 docker compose logs -f tagger # wait for "loaded wd-eva02-large-tagger-v3 on cuda"
