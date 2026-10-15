@@ -9,6 +9,7 @@ import { ImageCollection } from '../components/grid/ImageCollection';
 import { GroupCard } from '../components/groups/GroupCard';
 import { HorizontalRow } from '../components/groups/HorizontalRow';
 import { PageHeader } from '../components/layout/PageHeader';
+import { usePrefs } from '../context/Prefs';
 import { PageError, PageLoading } from './PageStates';
 import styles from './LibraryPage.module.css';
 
@@ -16,6 +17,11 @@ export function LibraryPage() {
   const home = useHome();
   const reviewPending = useStatus().data?.review.pending ?? 0;
   const client = useQueryClient();
+  const { collapsedSections, toggleSection } = usePrefs();
+  const collapse = (key: string) => ({
+    collapsed: collapsedSections.includes(key),
+    onToggle: () => toggleSection(key),
+  });
 
   if (home.isPending) return <PageLoading />;
   if (home.isError) return <PageError onRetry={() => home.refetch()} />;
@@ -50,13 +56,13 @@ export function LibraryPage() {
       </PageHeader>
 
       {recent.length > 0 && (
-        <Section title="Recently Added" flush>
+        <Section title="Recently Added" flush collapse={collapse('home.recent')}>
           <ImageCollection tiles={recent} contextKey="recent" variant="strip" />
         </Section>
       )}
 
       {illustrators.length > 0 && (
-        <Section title="Illustrators" seeAll="/illustrators" flush>
+        <Section title="Illustrators" seeAll="/illustrators" flush collapse={collapse('home.illustrators')}>
           <HorizontalRow>
             {illustrators.map((g) => (
               <GroupCard key={g.id} group={g} />
@@ -66,7 +72,7 @@ export function LibraryPage() {
       )}
 
       {collections.length > 0 && (
-        <Section title="Collections" seeAll="/collections" flush>
+        <Section title="Collections" seeAll="/collections" flush collapse={collapse('home.collections')}>
           <HorizontalRow>
             {collections.map((g) => (
               <GroupCard key={g.id} group={g} />
@@ -79,6 +85,7 @@ export function LibraryPage() {
         <Section
           flush
           title="Rediscover"
+          collapse={collapse('home.rediscover')}
           action={
             <button
               type="button"

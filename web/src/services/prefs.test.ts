@@ -37,6 +37,7 @@ describe('loadPrefs', () => {
       slideshow: { seconds: 20 as const, shuffle: true },
       viewerSplit: true,
       offlineFavorites: true,
+      collapsedSections: ['home.recent'],
     };
     savePrefs(store, prefs);
     expect(loadPrefs(store)).toEqual(prefs);
@@ -79,6 +80,21 @@ describe('loadPrefs: newer settings', () => {
     const store = new MemoryStore();
     store.set('recentSearches', stored);
     expect(loadPrefs(store).recentSearches).toEqual([]);
+  });
+
+  it.each([
+    { name: 'nothing stored', stored: undefined, expected: [] },
+    {
+      name: 'section keys',
+      stored: ['home.recent', 'home.rediscover'],
+      expected: ['home.recent', 'home.rediscover'],
+    },
+    { name: 'a non-array', stored: 'home.recent', expected: [] },
+    { name: 'malformed entries', stored: ['home.recent', 3, null], expected: ['home.recent'] },
+  ])('collapsed sections: $name', ({ stored, expected }) => {
+    const store = new MemoryStore();
+    if (stored !== undefined) store.set('collapsedSections', stored);
+    expect(loadPrefs(store).collapsedSections).toEqual(expected);
   });
 });
 

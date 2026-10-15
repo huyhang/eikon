@@ -21,6 +21,7 @@ interface PrefsActions {
   setSlideshow(patch: Partial<SlideshowPrefs>): void;
   setViewerSplit(split: boolean): void;
   setOfflineFavorites(on: boolean): void;
+  toggleSection(key: string): void;
 }
 
 interface PrefsContextValue extends Prefs, PrefsActions {
@@ -68,6 +69,13 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
       setSlideshow: (patch) => setPrefs((p) => ({ ...p, slideshow: { ...p.slideshow, ...patch } })),
       setViewerSplit: (viewerSplit) => update({ viewerSplit }),
       setOfflineFavorites: (offlineFavorites) => update({ offlineFavorites }),
+      toggleSection: (key) =>
+        setPrefs((p) => ({
+          ...p,
+          collapsedSections: p.collapsedSections.includes(key)
+            ? p.collapsedSections.filter((k) => k !== key)
+            : [...p.collapsedSections, key],
+        })),
     };
   }, []);
 

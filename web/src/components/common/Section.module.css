@@ -10,6 +10,10 @@
   margin-bottom: 12px;
 }
 
+.collapsedHeader {
+  margin-bottom: 0;
+}
+
 .header h2 {
   margin: 0;
   font: 700 22px/1.2 var(--font-display);
@@ -24,6 +28,35 @@
 
 .titleLink svg {
   color: var(--text-3);
+}
+
+.end {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.collapse {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-right: -6px;
+  border-radius: 50%;
+  color: var(--text-3);
+  transition: background-color 160ms ease;
+}
+
+.collapse:hover {
+  background: var(--fill-3);
+}
+
+.chevron {
+  transition: transform 200ms var(--ease-out);
+}
+
+.chevronCollapsed {
+  transform: rotate(-90deg);
 }
 
 .padded {

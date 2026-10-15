@@ -23,6 +23,8 @@ export interface Prefs {
   viewerSplit: boolean;
   /** Keep favorites saved on this device for use without a connection. */
   offlineFavorites: boolean;
+  /** Keys of the sections folded away, e.g. 'home.recent'. */
+  collapsedSections: string[];
 }
 
 export const DEFAULT_SLIDESHOW: SlideshowPrefs = { seconds: 10, shuffle: false };
@@ -44,6 +46,10 @@ function readSafeMode(raw: Partial<SafeModePrefs> | null): SafeModePrefs {
   };
 }
 
+function readStringList(raw: unknown): string[] {
+  return Array.isArray(raw) ? raw.filter((item): item is string => typeof item === 'string') : [];
+}
+
 /** Stored searches may come from an older version or be corrupted; keep only well-formed ones. */
 export function readRecentSearches(raw: unknown): SearchState[] {
   return Array.isArray(raw) ? raw.filter(isSearchState).slice(0, MAX_RECENT_SEARCHES) : [];
@@ -60,6 +66,7 @@ export function loadPrefs(store: KeyValueStore): Prefs {
     slideshow: readSlideshow(store.get<Partial<SlideshowPrefs> | null>('slideshow', null)),
     viewerSplit: store.get<unknown>('viewerSplit', false) === true,
     offlineFavorites: store.get<unknown>('offlineFavorites', false) === true,
+    collapsedSections: readStringList(store.get<unknown>('collapsedSections', [])),
   };
 }
 
@@ -71,6 +78,7 @@ export function savePrefs(store: KeyValueStore, prefs: Prefs): void {
   store.set('slideshow', prefs.slideshow);
   store.set('viewerSplit', prefs.viewerSplit);
   store.set('offlineFavorites', prefs.offlineFavorites);
+  store.set('collapsedSections', prefs.collapsedSections);
 }
 
 /** Most recent first, deduped by criteria, capped. Returns the same list when nothing changes. */

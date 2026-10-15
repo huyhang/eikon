@@ -5,7 +5,7 @@ import { QueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '../api/client';
 import { AppProviders } from '../App';
 import { LockSignal } from '../context/AuthLock';
-import { MemoryStore } from '../services/keyValueStore';
+import { MemoryStore, type KeyValueStore } from '../services/keyValueStore';
 import { NO_OFFLINE, type OfflineService } from '../offline/offlineService';
 import { createFakeApi } from './fakeApi';
 
@@ -16,6 +16,8 @@ interface RenderOptions {
   random?: () => number;
   confirm?: (message: string) => boolean;
   offline?: OfflineService;
+  /** Where prefs live; share one between renders to test what is remembered. */
+  store?: KeyValueStore;
 }
 
 export function renderWithProviders(
@@ -27,6 +29,7 @@ export function renderWithProviders(
     random = () => 0.5,
     confirm = () => true,
     offline = NO_OFFLINE,
+    store = new MemoryStore(),
   }: RenderOptions = {},
 ) {
   const queryClient = new QueryClient({
@@ -35,7 +38,7 @@ export function renderWithProviders(
   const lockSignal = new LockSignal();
   const result = render(
     <AppProviders
-      dependencies={{ api, store: new MemoryStore(), now, random, confirm, offline }}
+      dependencies={{ api, store, now, random, confirm, offline }}
       queryClient={queryClient}
       lockSignal={lockSignal}
     >
