@@ -99,9 +99,12 @@ export function Viewer({
   /** Shows `next` right away (also used by filmstrip taps), re-centring the slide track. */
   const jump = useCallback(
     (next: number) => {
-      // Commit the new slide before re-centring the track, in the same frame, so nothing flashes.
-      flushSync(() => setIndex(next));
+      // Re-centre the track before committing the new index, in the same frame. A slide mounted by the
+      // commit takes its starting position from trackX, but motion only writes the reset to the DOM on
+      // its next frame: committing first drew the slide after next mid-screen, over the new picture, for
+      // a frame.
       trackX.set(0);
+      flushSync(() => setIndex(next));
       onIndexChange(next);
     },
     [setIndex, trackX, onIndexChange],

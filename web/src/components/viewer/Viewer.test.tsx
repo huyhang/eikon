@@ -51,6 +51,12 @@ async function openViewer(wide: boolean) {
 
 const press = (key: string) => act(() => void window.dispatchEvent(new KeyboardEvent('keydown', { key })));
 
+/** The viewer slide showing image `id`. */
+const slideOf = (dialog: HTMLElement, id: number) =>
+  [...dialog.querySelectorAll<HTMLElement>('.slide')].find((slide) =>
+    slide.querySelector(`img[src^="/media/thumb/${id}/"]`),
+  );
+
 describe('Viewer', () => {
   it('Slideshow takes over the screen and hands back at the picture it reached', async () => {
     await openViewer(false);
@@ -81,6 +87,26 @@ describe('Viewer', () => {
     await openViewer(wide);
     expect(screen.queryByRole('navigation', { name: 'Nearby images' }) !== null).toBe(filmstrip);
     expect(screen.queryByRole('button', { name: 'Show the grid beside the viewer' }) !== null).toBe(split);
+  });
+
+  it('the picture after next appears beside the screen, not over the one swiped to', async () => {
+    const dialog = await openViewer(false);
+    const beside = slideOf(dialog, 2)!.style.transform;
+    // Where each new slide is drawn as it appears: this runs before the browser could paint, and
+    // motion only writes later position changes on its next frame.
+    const appeared: string[] = [];
+    const observer = new MutationObserver((records) => {
+      for (const node of records.flatMap((r) => [...r.addedNodes]))
+        if (node instanceof HTMLElement && node.classList.contains('slide'))
+          appeared.push(node.style.transform);
+    });
+    observer.observe(dialog, { childList: true, subtree: true });
+    // On the body rather than the window: the viewer looks at where the key was pressed.
+    fireEvent.keyDown(document.body, { key: 'ArrowRight' });
+    expect(await screen.findByText('2 of 3', {}, { timeout: 3000 })).toBeInTheDocument();
+    observer.disconnect();
+    expect(beside).toMatch(/^translateX\(\d+px\)$/);
+    expect(appeared).toEqual([beside]);
   });
 
   it('filmstrip taps jump straight to a picture', async () => {
