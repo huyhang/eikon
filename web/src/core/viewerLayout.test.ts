@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   FILMSTRIP_SPACE,
   INFO_PANEL_WIDTH,
+  pictureArea,
   pictureBox,
   TOOLBAR_SPACE,
   TOP_BAR_SPACE,
@@ -78,6 +79,17 @@ describe('viewerLayout', () => {
     },
   ])('$name', ({ input, expected }) => {
     expect(viewerLayout({ ...base, ...input })).toMatchObject(expected);
+  });
+});
+
+describe('pictureArea', () => {
+  it('spans the stage width between the insets', () => {
+    expect(pictureArea(phone, { top: TOP_BAR_SPACE, bottom: TOOLBAR_SPACE })).toEqual({
+      x: 0,
+      y: TOP_BAR_SPACE,
+      width: 400,
+      height: 800 - TOP_BAR_SPACE - TOOLBAR_SPACE,
+    });
   });
 });
 

@@ -3,7 +3,7 @@ import clsx from 'clsx';
 import { TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch';
 import { originalUrl, thumbUrl, type ImageTile } from '@eikon/shared';
 import type { Rect } from '../../core/geometry';
-import { pictureBox, type Insets } from '../../core/viewerLayout';
+import { pictureArea, pictureBox, type Insets } from '../../core/viewerLayout';
 import styles from './Viewer.module.css';
 
 interface ViewerImageProps {
@@ -69,15 +69,27 @@ export function ViewerImage({
   const [zoomed, setZoomed] = useState(false);
   const [hiRes, setHiRes] = useState(false);
   const box = boxFor(tile, stage, insets, padding);
-  const layers = <ImageLayers tile={tile} box={box} hiRes={hiRes || (active && animated)} alt={alt} />;
+  const showOriginal = hiRes || (active && animated);
 
-  if (!active) return <div className={styles.slideFill}>{layers}</div>;
+  if (!active)
+    return (
+      <div className={styles.slideFill}>
+        <ImageLayers tile={tile} box={box} hiRes={showOriginal} alt={alt} />
+      </div>
+    );
 
+  // What zooms is the picture itself, inside the area between the bars, so a zoomed picture pans only
+  // until its edges meet the area's (never into the black around it), and stays centred in a direction
+  // it doesn't yet fill. It still draws beyond the area, under the bars, as the stage clips it.
+  const area = pictureArea(stage, insets);
   return (
     <TransformWrapper
       minScale={1}
       maxScale={8}
       limitToBounds
+      centerZoomedOut
+      initialPositionX={box.x - area.x}
+      initialPositionY={box.y - area.y}
       doubleClick={{ mode: 'toggle', step: 1.6, animationTime: 260 }}
       panning={{ disabled: !zoomed, velocityDisabled: false }}
       wheel={{ step: 0.12 }}
@@ -91,10 +103,22 @@ export function ViewerImage({
       }}
     >
       <TransformComponent
-        wrapperStyle={{ width: '100%', height: '100%' }}
-        contentStyle={{ width: stage.width, height: stage.height }}
+        wrapperStyle={{
+          position: 'absolute',
+          left: area.x,
+          top: area.y,
+          width: area.width,
+          height: area.height,
+          overflow: 'visible',
+        }}
+        contentStyle={{ width: box.width, height: box.height }}
       >
-        {layers}
+        <ImageLayers
+          tile={tile}
+          box={{ x: 0, y: 0, width: box.width, height: box.height }}
+          hiRes={showOriginal}
+          alt={alt}
+        />
       </TransformComponent>
     </TransformWrapper>
   );

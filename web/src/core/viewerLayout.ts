@@ -58,6 +58,16 @@ export function viewerLayout(input: ViewerLayoutInput): ViewerLayout {
   return { width, stage, insets, padding: wide ? 20 : 0, sheetHeight };
 }
 
+/** Where the picture may be: the stage's full width, between the insets. A zoomed picture pans within it. */
+export function pictureArea(stage: { width: number; height: number }, insets: Insets): Rect {
+  return {
+    x: 0,
+    y: insets.top,
+    width: stage.width,
+    height: Math.max(0, stage.height - insets.top - insets.bottom),
+  };
+}
+
 /** The picture's box: as large as fits between the insets, centred, keeping its aspect ratio. */
 export function pictureBox(
   aspect: number,
@@ -65,11 +75,5 @@ export function pictureBox(
   insets: Insets,
   padding: number,
 ): Rect {
-  const area = {
-    x: 0,
-    y: insets.top,
-    width: stage.width,
-    height: Math.max(0, stage.height - insets.top - insets.bottom),
-  };
-  return fitRect(area, aspect, padding);
+  return fitRect(pictureArea(stage, insets), aspect, padding);
 }
