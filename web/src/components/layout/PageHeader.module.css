@@ -6,9 +6,9 @@
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 8px;
-  height: calc(var(--bar-height) + var(--safe-top));
-  padding: var(--safe-top) calc(var(--gutter) - 8px) 0;
-  margin-bottom: calc(-1 * var(--bar-height) - var(--safe-top));
+  height: calc(var(--bar-height) + var(--safe-top) + var(--bar-top-gap));
+  padding: calc(var(--safe-top) + var(--bar-top-gap)) calc(var(--gutter) - 8px) 0;
+  margin-bottom: calc(-1 * var(--bar-height) - var(--safe-top) - var(--bar-top-gap));
   border-bottom: 0.5px solid transparent;
   transition:
     background-color 240ms ease,
@@ -91,7 +91,7 @@
 }
 
 .hero {
-  padding: calc(var(--bar-height) + var(--safe-top) + 4px) var(--gutter) 14px;
+  padding: calc(var(--bar-height) + var(--safe-top) + var(--bar-top-gap) + 4px) var(--gutter) 14px;
 }
 
 .title {
