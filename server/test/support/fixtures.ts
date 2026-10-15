@@ -1,4 +1,4 @@
-import type { GroupKind, Rating, TaggerTag } from '@eikon/shared';
+import { THUMB_VERSION, type GroupKind, type Rating, type TaggerTag } from '@eikon/shared';
 import { Database } from '../../src/db/database';
 import { createRepositories, type Repositories } from '../../src/db/repositories';
 
@@ -15,6 +15,7 @@ export interface SeedImage {
   height?: number;
   tags?: (string | (Partial<TaggerTag> & { name: string }))[];
   rating?: Rating;
+  thumbVersion?: number;
 }
 
 let counter = 0;
@@ -32,6 +33,7 @@ export function seedImage(repos: Repositories, seed: SeedImage = {}): number {
     sizeBytes: 1000,
     placeholder: 'AAAA',
     addedAt: seed.addedAt ?? counter,
+    thumbVersion: seed.thumbVersion ?? THUMB_VERSION,
   });
   const groups = [
     seed.group ?? { kind: 'illustrator' as const, name: 'Default' },

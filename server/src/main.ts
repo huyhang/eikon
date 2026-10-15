@@ -17,6 +17,7 @@ import { FsLibrarySource } from './library/librarySource';
 import { Scanner } from './library/scanner';
 import { ScanScheduler } from './library/scanScheduler';
 import { SharpImageProcessor } from './media/imageProcessor';
+import { ThumbnailRefresher } from './media/thumbnailRefresher';
 import { FsThumbnailStore } from './media/thumbnailStore';
 import { SimilarityService } from './similarity/similarityService';
 import { HttpTaggerClient } from './tagging/taggerClient';
@@ -91,6 +92,20 @@ function buildScanner(
   });
 }
 
+function buildThumbnailRefresher({ config, logger, repos, thumbnails }: Core, scanner: Scanner) {
+  return new ThumbnailRefresher({
+    images: repos.images,
+    files: repos.files,
+    library: new FsLibrarySource(config.libraryDir),
+    processor: new SharpImageProcessor(),
+    thumbnails,
+    scanning: () => scanner.status().phase !== 'idle',
+    sleep: realSleep,
+    logger: logger.child({ component: 'thumbnails' }),
+    concurrency: config.processConcurrency,
+  });
+}
+
 function buildAuth({ config }: Core) {
   const secrets = new FileSecretStore(path.join(config.dataDir, 'session.key'));
   return new AuthService({
@@ -123,6 +138,7 @@ async function main(config: Config): Promise<void> {
   const worker = buildTagWorker(core, tagger, similarity);
   const scanner = buildScanner(core, () => worker.wake(), similarity);
   const scheduler = new ScanScheduler(() => scanner.scan(), config.scanIntervalMs, realSleep, logger);
+  const refresher = buildThumbnailRefresher(core, scanner);
   const tailscale = { proxies: config.trustedProxies, users: config.tailscaleUsers };
   const backups = new BackupService(
     repos.db,
@@ -170,12 +186,14 @@ async function main(config: Config): Promise<void> {
   scheduler.start();
   worker.start();
   backupScheduler.start();
+  refresher.start();
 
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'shutting down');
     scheduler.stop();
     worker.stop();
     backupScheduler.stop();
+    refresher.stop();
     await app.close();
     repos.db.close();
     process.exit(0);

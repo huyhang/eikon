@@ -20,7 +20,7 @@ export function ReviewCard({ detail, onConfirm, onSkip, busy }: ReviewCardProps)
       <div className={styles.imageWrap}>
         <img
           className={styles.image}
-          src={thumbUrl(detail.id, 'lg')}
+          src={thumbUrl(detail, 'lg')}
           alt={altTextFor(detail)}
           style={{ aspectRatio: `${detail.width} / ${detail.height}` }}
         />

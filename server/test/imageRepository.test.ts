@@ -73,6 +73,7 @@ describe('ImageRepository housekeeping', () => {
       sizeBytes: 1,
       placeholder: '',
       addedAt: 0,
+      thumbVersion: 1,
     });
     expect(repos.images.deleteOrphans()).toEqual([{ id: expect.any(Number), hash: 'orphan' }]);
     expect(repos.images.findIdByHash('keep')).toBeDefined();

@@ -181,4 +181,16 @@ describe('respond', () => {
     network.mode = 'online';
     expect(await (await get('/media/thumb/9/sm'))!.text()).toBe('network');
   });
+
+  it('offline, a thumbnail size that was not saved is answered with a saved size of the same image', async () => {
+    const { network, caches, get } = setup();
+    const offline = await caches.open(OFFLINE_CACHE);
+    await offline.put('/media/thumb/5/sm?v=2', new Response('small'));
+    await offline.put('/media/thumb/5/lg?v=2', new Response('large'));
+    await offline.put('/media/thumb/6/sm?v=2', new Response('small'));
+    network.mode = 'offline';
+    expect(await (await get('/media/thumb/5/md?v=2'))!.text()).toBe('large');
+    expect(await (await get('/media/thumb/6/md?v=2'))!.text()).toBe('small');
+    await expect(get('/media/thumb/7/md?v=2')).rejects.toThrow('Failed to fetch');
+  });
 });

@@ -351,7 +351,11 @@ describe('media', () => {
   it('serves thumbnails and originals with immutable caching; missing ones 404', async () => {
     const { app, repos, thumbnails, library } = await setup();
     const id = seedImage(repos, { hash: 'abc', group: { kind: 'illustrator', name: 'Ana' } });
-    await thumbnails.write('abc', { sm: Buffer.from('small'), lg: Buffer.from('large') });
+    await thumbnails.write('abc', {
+      sm: Buffer.from('small'),
+      md: Buffer.from('medium'),
+      lg: Buffer.from('large'),
+    });
     library.put('illustrator/Ana/abc-0.jpg', 'ORIGINAL');
 
     const thumb = await app.inject(`/media/thumb/${id}/sm`);
@@ -359,6 +363,7 @@ describe('media', () => {
     expect(thumb.headers['content-type']).toBe('image/webp');
     expect(thumb.headers['cache-control']).toContain('immutable');
     expect(thumb.body).toBe('small');
+    expect((await app.inject(`/media/thumb/${id}/md?v=2`)).body).toBe('medium');
 
     const original = await app.inject(`/media/original/${id}`);
     expect(original.headers['content-type']).toBe('image/jpeg');

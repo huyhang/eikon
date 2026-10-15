@@ -1,5 +1,5 @@
 import { Readable } from 'node:stream';
-import type { ThumbSize } from '@eikon/shared';
+import { THUMB_SIZES, type ThumbSize } from '@eikon/shared';
 import type { LibraryEntry, LibrarySource } from '../../src/library/librarySource';
 import { classifyPath } from '../../src/library/pathClassifier';
 import type { ImageProcessor, ProcessedImage } from '../../src/media/imageProcessor';
@@ -43,7 +43,6 @@ export class FakeProcessor implements ImageProcessor {
 
   async process(bytes: Buffer): Promise<ProcessedImage> {
     this.calls += 1;
-    if (bytes.toString().startsWith('bad')) throw new Error('corrupt');
     return {
       width: 400,
       height: 300,
@@ -51,8 +50,13 @@ export class FakeProcessor implements ImageProcessor {
       animated: false,
       placeholder: 'AAAA',
       phash: fakePhash(bytes),
-      thumbnails: { sm: Buffer.from(`sm:${bytes}`), lg: Buffer.from(`lg:${bytes}`) },
+      thumbnails: await this.thumbnails(bytes),
     };
+  }
+
+  async thumbnails(bytes: Buffer): Promise<Record<ThumbSize, Buffer>> {
+    if (bytes.toString().startsWith('bad')) throw new Error('corrupt');
+    return fakeThumbnails(String(bytes));
   }
 
   async perceptualHash(bytes: Buffer): Promise<string> {
@@ -60,11 +64,19 @@ export class FakeProcessor implements ImageProcessor {
   }
 }
 
+/** Thumbnails whose content is "<size>:<label>", e.g. "md:cat". */
+export function fakeThumbnails(label: string): Record<ThumbSize, Buffer> {
+  return Object.fromEntries(THUMB_SIZES.map((size) => [size, Buffer.from(`${size}:${label}`)])) as Record<
+    ThumbSize,
+    Buffer
+  >;
+}
+
 /** Content like "dup:3" hashes to the same value as "dup:3:smaller", making near-duplicates easy to stage. */
 export function fakePhash(bytes: Buffer): string {
   const key = bytes
     .toString()
-    .replace(/^(sm|lg):/, '')
+    .replace(/^(sm|md|lg):/, '')
     .split(':')
     .slice(0, 2)
     .join(':');
@@ -77,8 +89,7 @@ export class MemoryThumbnails implements ThumbnailStore {
   stored = new Map<string, Buffer>();
 
   async write(hash: string, thumbnails: Record<ThumbSize, Buffer>): Promise<void> {
-    this.stored.set(`${hash}:sm`, thumbnails.sm);
-    this.stored.set(`${hash}:lg`, thumbnails.lg);
+    for (const size of THUMB_SIZES) this.stored.set(`${hash}:${size}`, thumbnails[size]);
   }
 
   async read(hash: string, size: ThumbSize): Promise<Buffer> {
@@ -88,8 +99,7 @@ export class MemoryThumbnails implements ThumbnailStore {
   }
 
   async delete(hash: string): Promise<void> {
-    this.stored.delete(`${hash}:sm`);
-    this.stored.delete(`${hash}:lg`);
+    for (const size of THUMB_SIZES) this.stored.delete(`${hash}:${size}`);
   }
 }
 

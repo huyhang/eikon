@@ -6,7 +6,7 @@ import styles from './SimilarHeader.module.css';
 export function SimilarHeader({ imageId, onClear }: { imageId: number; onClear: () => void }) {
   return (
     <div className={styles.card}>
-      <img className={styles.thumb} src={thumbUrl(imageId, 'sm')} alt="The image to match" />
+      <img className={styles.thumb} src={thumbUrl({ id: imageId }, 'sm')} alt="The image to match" />
       <div className={styles.text}>
         <span className={styles.title}>More like this</span>
         <span className={styles.detail}>Most similar first</span>

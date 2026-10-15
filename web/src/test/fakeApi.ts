@@ -1,5 +1,12 @@
 import { vi } from 'vitest';
-import type { AuthStatus, ImageDetail, ImageTile, StatusResponse, TagInfo } from '@eikon/shared';
+import {
+  THUMB_VERSION,
+  type AuthStatus,
+  type ImageDetail,
+  type ImageTile,
+  type StatusResponse,
+  type TagInfo,
+} from '@eikon/shared';
 import type { ApiClient } from '../api/client';
 
 export const sampleTile = (id: number, partial: Partial<ImageTile> = {}): ImageTile => ({
@@ -8,6 +15,7 @@ export const sampleTile = (id: number, partial: Partial<ImageTile> = {}): ImageT
   height: 1200,
   placeholder: btoa(String.fromCharCode(...Array.from({ length: 27 }, (_, i) => (i * 9) % 255))),
   rating: 'general',
+  thumbVersion: THUMB_VERSION,
   ...partial,
 });
 

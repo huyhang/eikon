@@ -69,7 +69,11 @@ async function setup(count = 2) {
   const ids: number[] = [];
   for (let i = 0; i < count; i++) {
     const id = seedImage(repos, { hash: `img${i}`, addedAt: i });
-    await thumbnails.write(`img${i}`, { sm: Buffer.from(`sm${i}`), lg: Buffer.from(`lg${i}`) });
+    await thumbnails.write(`img${i}`, {
+      sm: Buffer.from(`sm${i}`),
+      md: Buffer.from(`md${i}`),
+      lg: Buffer.from(`lg${i}`),
+    });
     ids.push(id);
   }
   const tagger = new FakeTagger();

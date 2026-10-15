@@ -31,11 +31,11 @@ describe('withParams', () => {
 
 describe('HttpApiClient', () => {
   it('decodes compact image tuples', async () => {
-    const fetch = fakeFetch(200, { total: 1, tiles: [[5, 100, 200, 'AAA', 1]] });
+    const fetch = fakeFetch(200, { total: 1, tiles: [[5, 100, 200, 'AAA', 1, 2]] });
     const client = new HttpApiClient({ fetch });
     await expect(client.images({ tags: ['a'], maxRating: 'general' })).resolves.toEqual({
       total: 1,
-      tiles: [{ id: 5, width: 100, height: 200, placeholder: 'AAA', rating: 'sensitive' }],
+      tiles: [{ id: 5, width: 100, height: 200, placeholder: 'AAA', rating: 'sensitive', thumbVersion: 2 }],
     });
     expect(fetch).toHaveBeenCalledWith('/api/images?tag=a&maxRating=general', expect.anything());
   });

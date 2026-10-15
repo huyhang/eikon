@@ -15,17 +15,36 @@ export interface ImageTile {
   /** base64 of a tiny 3x3 RGB bitmap (27 bytes); render blurred as a placeholder. */
   placeholder: string;
   rating: Rating | null;
+  /** How the image's thumbnails were made (see THUMB_VERSION); decides their URLs and sizes. */
+  thumbVersion: number;
 }
 
-/** Compact wire form of an ImageTile used for large lists. rating is -1 when unknown. */
-export type TileTuple = [id: number, width: number, height: number, placeholder: string, rating: number];
+/**
+ * Compact wire form of an ImageTile used for large lists. rating is -1 when unknown. thumbVersion is
+ * missing from lists saved before it existed, which means version 1.
+ */
+export type TileTuple = [
+  id: number,
+  width: number,
+  height: number,
+  placeholder: string,
+  rating: number,
+  thumbVersion?: number,
+];
 
 export function encodeTile(tile: ImageTile): TileTuple {
-  return [tile.id, tile.width, tile.height, tile.placeholder, tile.rating ? ratingLevel(tile.rating) : -1];
+  return [
+    tile.id,
+    tile.width,
+    tile.height,
+    tile.placeholder,
+    tile.rating ? ratingLevel(tile.rating) : -1,
+    tile.thumbVersion,
+  ];
 }
 
-export function decodeTile([id, width, height, placeholder, rating]: TileTuple): ImageTile {
-  return { id, width, height, placeholder, rating: ratingFromLevel(rating) };
+export function decodeTile([id, width, height, placeholder, rating, thumbVersion = 1]: TileTuple): ImageTile {
+  return { id, width, height, placeholder, rating: ratingFromLevel(rating), thumbVersion };
 }
 
 export interface ImageListResponse {

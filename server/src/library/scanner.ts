@@ -1,4 +1,4 @@
-import type { ScanStatus } from '@eikon/shared';
+import { THUMB_VERSION, type ScanStatus } from '@eikon/shared';
 import type { Repositories } from '../db/repositories';
 import type { ImageProcessor } from '../media/imageProcessor';
 import type { ThumbnailStore } from '../media/thumbnailStore';
@@ -144,6 +144,7 @@ export class Scanner {
         sizeBytes: bytes.length,
         placeholder: processed.placeholder,
         phash: processed.phash,
+        thumbVersion: THUMB_VERSION,
         addedAt: entry.mtimeMs,
       }),
     };

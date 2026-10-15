@@ -59,9 +59,9 @@ Eikon reads one shared folder with two subfolders:
 - Eikon never changes this folder. If the same image appears in an illustrator folder and in a collection, it is stored and tagged once.
 
 Then create a folder for Eikon's own data, for example `/volume1/docker/eikon-data`, using File Station or over SSH.
-Plan on about **0.5 MB per image**: mostly the large viewer thumbnail (~400 KB), plus the grid thumbnail
-(~50 KB), the database with its similarity vectors (~3 KB) and a week of nightly database backups. 20,000
-images come to roughly 10 GB.
+Plan on about **0.6 MB per image**: mostly the large viewer thumbnail (~400 KB), plus the two grid thumbnails
+(~50 and ~100 KB), the database with its similarity vectors (~3 KB) and a week of nightly database backups.
+20,000 images come to roughly 12 GB.
 
 ```bash
 sudo mkdir -p /volume1/docker/eikon-data
@@ -283,7 +283,7 @@ requests from scripts) still get the passcode, so keep `EIKON_PASSCODE` set.
 | Add illustrations | Drop files into `Illustrators/<name>/` or `Collections/<name>/`. Eikon scans every 5 minutes, or use **Settings → Rescan library** |
 | Fix a tag | Open the image → swipe up → **Edit tags**. Your edits are never overwritten by re-tagging |
 | Change the passcode | Edit `EIKON_PASSCODE` in `.env`, then `sudo docker compose up -d`. This signs out every device |
-| Update Eikon | `cd /volume1/docker/eikon && sudo git pull && cd docker/nas && sudo docker compose up -d --build` |
+| Update Eikon | `cd /volume1/docker/eikon && sudo git pull && cd docker/nas && sudo docker compose up -d --build`. When an update changes how thumbnails are made, Eikon rebuilds the older ones from the originals in the background, pausing while a scan runs; images keep their old thumbnails until then |
 | Back up | Eikon copies its database to `DATA_PATH/backups` every night at 03:00 (`EIKON_BACKUP_HOUR`) and keeps a week of them (`EIKON_BACKUP_KEEP`). **Settings → Backups & Export** shows them, downloads one, or backs up now. Include `DATA_PATH/backups` in Hyper Backup; thumbnails can always be rebuilt |
 | Keep your curation portable | **Settings → Export curation** downloads every tag, favorite, rating, alias and saved search as JSON, keyed by file content, so it survives a database rebuild or moving files around |
 | Review new tags | **Library → Review** walks through freshly tagged images: keep, fix or skip each one |
@@ -327,7 +327,7 @@ requests from scripts) still get the passcode, so keep `EIKON_PASSCODE` set.
 | `EIKON_TAGGER_URL` | *(required in compose)* | Tagger base URL, e.g. `http://gpubox.tail1234.ts.net:7860` |
 | `EIKON_TAGGER_TOKEN` | *(empty)* | Bearer token for the tagger |
 | `EIKON_SCAN_INTERVAL_MINUTES` | `5` | Library rescan interval |
-| `EIKON_PROCESS_CONCURRENCY` | `2` | Images hashed and thumbnailed in parallel during a scan |
+| `EIKON_PROCESS_CONCURRENCY` | `2` | Images hashed and thumbnailed in parallel during a scan, and when older thumbnails are rebuilt |
 | `EIKON_TAG_CONCURRENCY` | `8` | Requests in flight to the tagger; it batches them on the GPU |
 | `EIKON_BACKUP_HOUR` | `3` | Hour of day (0–23, in `TZ`) for the nightly database backup |
 | `EIKON_BACKUP_KEEP` | `7` | Nightly backups kept |

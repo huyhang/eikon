@@ -1,4 +1,5 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { THUMB_SIZES, type ThumbSize } from '@eikon/shared';
 
@@ -20,7 +21,14 @@ export class FsThumbnailStore implements ThumbnailStore {
   async write(hash: string, thumbnails: Record<ThumbSize, Buffer>): Promise<void> {
     await mkdir(path.join(this.root, hash.slice(0, 2)), { recursive: true });
     await Promise.all(
-      THUMB_SIZES.map((size) => writeFile(thumbnailPath(this.root, hash, size), thumbnails[size])),
+      THUMB_SIZES.map(async (size) => {
+        // Written aside, then renamed: rebuilt thumbnails replace files that may be being served. The
+        // name is unique because two scan lanes can write the same hash at once.
+        const target = thumbnailPath(this.root, hash, size);
+        const temp = `${target}.${randomUUID()}.tmp`;
+        await writeFile(temp, thumbnails[size]);
+        await rename(temp, target);
+      }),
     );
   }
 

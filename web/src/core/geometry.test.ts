@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fitRect, flipToTarget, scrollFraction, scrubberToScroll, type Rect } from './geometry';
+import { fitRect, fittedWidth, flipToTarget, scrollFraction, scrubberToScroll, type Rect } from './geometry';
 
 const screen: Rect = { x: 0, y: 0, width: 1000, height: 500 };
 
@@ -31,6 +31,18 @@ describe('fitRect', () => {
     },
   ])('$name', ({ aspect, padding, expected }) => {
     expect(fitRect(screen, aspect, padding)).toEqual(expected);
+  });
+});
+
+describe('fittedWidth', () => {
+  const square = { width: 200, height: 200 };
+  it.each<['cover' | 'contain', number, number]>([
+    ['cover', 0.5, 200],
+    ['cover', 4, 800],
+    ['contain', 0.5, 100],
+    ['contain', 4, 200],
+  ])('%s at aspect %d draws %dpx wide', (fit, aspect, expected) => {
+    expect(fittedWidth(square, aspect, fit)).toBe(expected);
   });
 });
 

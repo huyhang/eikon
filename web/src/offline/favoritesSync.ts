@@ -1,4 +1,4 @@
-import { thumbUrl, type ImageListResponse } from '@eikon/shared';
+import { decodeTile, thumbUrl, type ImageListResponse, type ThumbSource } from '@eikon/shared';
 import { cacheKey, OFFLINE_CACHE } from './policy';
 
 export interface SyncProgress {
@@ -16,9 +16,12 @@ export interface SyncResult {
 /** What the app asks for before it can show anything; refreshed on every sync so it starts offline. */
 export const BOOT_URLS = ['/api/auth/status', '/api/status', '/api/saved-searches'];
 
-/** What viewing one favorite needs: grid and viewer thumbnails, and its details. */
-export function imageUrls(id: number): string[] {
-  return [thumbUrl(id, 'sm'), thumbUrl(id, 'lg'), `/api/images/${id}`];
+/**
+ * What viewing one favorite needs: grid and viewer thumbnails, and its details. The URLs carry the
+ * thumbnail version, so rebuilt thumbnails are saved again and the old ones dropped.
+ */
+export function imageUrls(image: ThumbSource): string[] {
+  return [thumbUrl(image, 'sm'), thumbUrl(image, 'lg'), `/api/images/${image.id}`];
 }
 
 interface SyncDeps {
@@ -48,10 +51,10 @@ export async function syncFavorites({
   const cache = await caches.open(OFFLINE_CACHE);
   const list = await fetch(listUrl);
   if (!list.ok) throw new Error(`Couldn't load your favorites (${list.status}).`);
-  const ids = ((await list.clone().json()) as ImageListResponse).tiles.map(([id]) => id);
+  const tiles = ((await list.clone().json()) as ImageListResponse).tiles.map(decodeTile);
   await cache.put(listUrl, list);
 
-  const owner = new Map(ids.flatMap((id) => imageUrls(id).map((url) => [url, id] as const)));
+  const owner = new Map(tiles.flatMap((tile) => imageUrls(tile).map((url) => [url, tile.id] as const)));
   const keep = new Set([listUrl, ...BOOT_URLS, ...owner.keys()]);
   const saved = new Set<string>();
   for (const request of await cache.keys()) {
@@ -83,5 +86,5 @@ export async function syncFavorites({
     }
   };
   await Promise.all(Array.from({ length: concurrency }, worker));
-  return { favorites: ids.length, saved: ids.length - failed.size, failed: failed.size };
+  return { favorites: tiles.length, saved: tiles.length - failed.size, failed: failed.size };
 }

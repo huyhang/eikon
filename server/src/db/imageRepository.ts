@@ -15,6 +15,8 @@ export interface NewImage {
   placeholder: string;
   addedAt: number;
   phash?: string | null;
+  /** The THUMB_VERSION the image's thumbnails were made with. */
+  thumbVersion: number;
 }
 
 /** Options for listing images beyond the query itself. */
@@ -43,8 +45,9 @@ export class ImageRepository {
 
   insert(image: NewImage): number {
     return this.db.run(
-      `INSERT INTO images (hash, width, height, format, animated, size_bytes, placeholder, added_at, phash)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO images
+         (hash, width, height, format, animated, size_bytes, placeholder, added_at, phash, thumb_version)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       image.hash,
       image.width,
       image.height,
@@ -54,6 +57,7 @@ export class ImageRepository {
       image.placeholder,
       image.addedAt,
       image.phash ?? null,
+      image.thumbVersion,
     ).lastInsertRowid;
   }
 
@@ -122,6 +126,25 @@ export class ImageRepository {
 
   setPhash(id: number, phash: string): void {
     this.db.run('UPDATE images SET phash = ? WHERE id = ?', phash, id);
+  }
+
+  /** Images whose thumbnails were made before `version`, oldest first. */
+  staleThumbnails(version: number, limit: number): { id: number; hash: string }[] {
+    return this.db.all(
+      'SELECT id, hash FROM images WHERE thumb_version < ? ORDER BY id LIMIT ?',
+      version,
+      limit,
+    );
+  }
+
+  countStaleThumbnails(version: number): number {
+    return (
+      this.db.get<{ n: number }>('SELECT count(*) AS n FROM images WHERE thumb_version < ?', version)?.n ?? 0
+    );
+  }
+
+  setThumbVersion(id: number, version: number): void {
+    this.db.run('UPDATE images SET thumb_version = ? WHERE id = ?', version, id);
   }
 
   duplicateCandidates(): DuplicateCandidate[] {

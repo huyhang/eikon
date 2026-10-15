@@ -6,14 +6,15 @@ export interface TileRow {
   height: number;
   placeholder: string;
   rating: number | null;
+  thumb_version: number;
 }
 
 /** Columns needed to build a TileRow from images alias `i`. */
 export const TILE_COLUMNS =
-  'i.id, i.width, i.height, i.placeholder, COALESCE(i.rating_override, i.rating) AS rating';
+  'i.id, i.width, i.height, i.placeholder, COALESCE(i.rating_override, i.rating) AS rating, i.thumb_version';
 
 /** The same columns by their output names, for selecting from a subquery that used TILE_COLUMNS. */
-export const TILE_OUTPUT_COLUMNS = 'id, width, height, placeholder, rating';
+export const TILE_OUTPUT_COLUMNS = 'id, width, height, placeholder, rating, thumb_version';
 
 export function toTile(row: TileRow): ImageTile {
   return {
@@ -22,5 +23,6 @@ export function toTile(row: TileRow): ImageTile {
     height: row.height,
     placeholder: row.placeholder,
     rating: row.rating === null ? null : ratingFromLevel(row.rating),
+    thumbVersion: row.thumb_version,
   };
 }

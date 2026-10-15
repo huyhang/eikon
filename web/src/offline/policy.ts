@@ -1,3 +1,4 @@
+import { THUMB_SIZES } from '@eikon/shared';
 import { EXPORT_URL } from '../api/client';
 
 /** Cache names shared by the page and the service worker; everything Eikon stores starts with `eikon-`. */
@@ -32,6 +33,17 @@ export function routeFor(
 /** Backups and the curation export are big one-off downloads; never cached. */
 function isDownload(pathname: string): boolean {
   return pathname === EXPORT_URL || pathname.startsWith('/api/backups/');
+}
+
+/** The same image's other thumbnail sizes, largest first, at the same version. */
+export function otherThumbSizes(url: string): string[] {
+  const parsed = new URL(url, 'http://eikon.invalid');
+  const match = /^\/media\/thumb\/(\d+)\/(\w+)$/.exec(parsed.pathname);
+  if (!match) return [];
+  const [, id, size] = match;
+  return THUMB_SIZES.toReversed()
+    .filter((other) => other !== size)
+    .map((other) => `/media/thumb/${id}/${other}${parsed.search}`);
 }
 
 /** Path plus query, the form cache keys are compared in. */

@@ -24,6 +24,16 @@ export function fitRect(container: Rect, aspect: number, padding = 0): Rect {
   };
 }
 
+/** Width an image of `aspect` is drawn at in a box with "object-fit: cover" or "contain". */
+export function fittedWidth(
+  box: { width: number; height: number },
+  aspect: number,
+  fit: 'cover' | 'contain',
+): number {
+  const atBoxHeight = box.height * aspect;
+  return fit === 'cover' ? Math.max(box.width, atBoxHeight) : Math.min(box.width, atBoxHeight);
+}
+
 /**
  * Transform (translate + uniform scale, origin at the stage centre) that makes an image box
  * shown inside `stage` appear exactly over `target` (e.g. its grid thumbnail).

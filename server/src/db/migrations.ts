@@ -124,4 +124,8 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE images ADD COLUMN reviewed_at INTEGER;
   CREATE INDEX images_review ON images (tag_status, reviewed_at, tagged_at);
   `,
+  // 4: which version of the thumbnails each image has, so older ones can be rebuilt.
+  `
+  ALTER TABLE images ADD COLUMN thumb_version INTEGER NOT NULL DEFAULT 1;
+  `,
 ];

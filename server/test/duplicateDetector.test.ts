@@ -10,7 +10,12 @@ async function setup(entries: Array<{ hash: string; width: number; thumbnail?: s
   const ids: Record<string, number> = {};
   for (const e of entries) {
     ids[e.hash] = seedImage(repos, { hash: e.hash, width: e.width, height: e.width });
-    if (e.thumbnail) await thumbnails.write(e.hash, { sm: Buffer.from(e.thumbnail), lg: Buffer.from('lg') });
+    if (e.thumbnail)
+      await thumbnails.write(e.hash, {
+        sm: Buffer.from(e.thumbnail),
+        md: Buffer.from('md'),
+        lg: Buffer.from('lg'),
+      });
   }
   const detector = new DuplicateDetector({
     images: repos.images,

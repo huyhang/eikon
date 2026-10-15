@@ -215,7 +215,7 @@ function MoreLikeThis({ imageId }: { imageId: number }) {
                 to={`/search?like=${imageId}&img=${tile.id}`}
                 className={styles.similarTile}
               >
-                <img src={thumbUrl(tile.id, 'sm')} alt="" loading="lazy" />
+                <img src={thumbUrl(tile, 'sm')} alt="" loading="lazy" />
               </Link>
             ))
           : SKELETON.map((position) => <span key={position} className={styles.similarTile} />)}

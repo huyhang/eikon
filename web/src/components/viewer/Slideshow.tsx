@@ -52,7 +52,7 @@ export function Slideshow({ tiles, startIndex, onExit }: SlideshowProps) {
 
   useEffect(() => {
     const next = tiles[order[stepPosition(position, order.length, 1)] ?? 0];
-    if (next) new Image().src = thumbUrl(next.id, 'lg');
+    if (next) new Image().src = thumbUrl(next, 'lg');
   }, [position, order, tiles]);
 
   // Controls fade after a few seconds, but stay while paused so the settings can be changed.
@@ -94,7 +94,7 @@ export function Slideshow({ tiles, startIndex, onExit }: SlideshowProps) {
         <motion.img
           key={tile.id}
           className={styles.picture}
-          src={thumbUrl(tile.id, 'lg')}
+          src={thumbUrl(tile, 'lg')}
           alt={`Slide ${position + 1} of ${order.length}`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

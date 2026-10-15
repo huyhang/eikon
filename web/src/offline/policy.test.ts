@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cacheKey, routeFor, type OfflineRoute } from './policy';
+import { cacheKey, otherThumbSizes, routeFor, type OfflineRoute } from './policy';
 
 const ORIGIN = 'https://eikon.test';
 
@@ -30,5 +30,19 @@ describe('cacheKey', () => {
     ['https://eikon.test/', '/'],
   ])('%s → %s', (url, expected) => {
     expect(cacheKey(url)).toBe(expected);
+  });
+});
+
+describe('otherThumbSizes', () => {
+  it('lists the same image at its other sizes, largest first, keeping the version', () => {
+    expect(otherThumbSizes('https://eikon.test/media/thumb/5/md?v=2')).toEqual([
+      '/media/thumb/5/lg?v=2',
+      '/media/thumb/5/sm?v=2',
+    ]);
+    expect(otherThumbSizes('/media/thumb/5/sm')).toEqual(['/media/thumb/5/lg', '/media/thumb/5/md']);
+  });
+
+  it('ignores anything that is not a thumbnail', () => {
+    expect(otherThumbSizes('/media/original/5')).toEqual([]);
   });
 });

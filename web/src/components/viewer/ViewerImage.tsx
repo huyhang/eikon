@@ -35,10 +35,10 @@ function ImageLayers({ tile, box, hiRes, alt }: { tile: ImageTile; box: Rect; hi
   const [originalLoaded, setOriginalLoaded] = useState(false);
   return (
     <div className={styles.box} style={{ left: box.x, top: box.y, width: box.width, height: box.height }}>
-      <img className={styles.layer} src={thumbUrl(tile.id, 'sm')} alt={alt} draggable={false} />
+      <img className={styles.layer} src={thumbUrl(tile, 'sm')} alt={alt} draggable={false} />
       <img
         className={clsx(styles.layer, styles.fade, largeLoaded && styles.shown)}
-        src={thumbUrl(tile.id, 'lg')}
+        src={thumbUrl(tile, 'lg')}
         alt=""
         draggable={false}
         onLoad={() => setLargeLoaded(true)}

@@ -21,11 +21,11 @@ const press = (key: string) => act(() => void window.dispatchEvent(new KeyboardE
 describe('Slideshow', () => {
   it('starts on the chosen picture and moves on every 10 seconds by default', () => {
     renderShow(1);
-    expect(slide(1)).toHaveAttribute('src', '/media/thumb/12/lg');
+    expect(slide(1)).toHaveAttribute('src', '/media/thumb/12/lg?v=2');
     act(() => vi.advanceTimersByTime(10_000));
-    expect(slide(2)).toHaveAttribute('src', '/media/thumb/13/lg');
+    expect(slide(2)).toHaveAttribute('src', '/media/thumb/13/lg?v=2');
     act(() => vi.advanceTimersByTime(10_000));
-    expect(slide(3)).toHaveAttribute('src', '/media/thumb/11/lg');
+    expect(slide(3)).toHaveAttribute('src', '/media/thumb/11/lg?v=2');
   });
 
   it('Space pauses and resumes', () => {
@@ -44,7 +44,7 @@ describe('Slideshow', () => {
   ])('$key steps through the pictures, wrapping round', ({ key, expected }) => {
     renderShow();
     press(key);
-    expect(slide(expected.n)).toHaveAttribute('src', `/media/thumb/${expected.id}/lg`);
+    expect(slide(expected.n)).toHaveAttribute('src', `/media/thumb/${expected.id}/lg?v=2`);
   });
 
   it('Esc leaves at the picture on screen', () => {
@@ -58,7 +58,7 @@ describe('Slideshow', () => {
     renderShow(0, () => 0);
     fireEvent.click(screen.getByRole('switch', { name: 'Shuffle' }));
     press('ArrowRight');
-    expect(slide(2)).toHaveAttribute('src', '/media/thumb/13/lg');
+    expect(slide(2)).toHaveAttribute('src', '/media/thumb/13/lg?v=2');
   });
 
   it('a shorter interval takes effect straight away', () => {

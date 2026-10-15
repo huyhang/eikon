@@ -48,7 +48,7 @@ export function Filmstrip({ tiles, index, onJump, bottom }: FilmstripProps) {
             aria-label={`Image ${i + 1}`}
             aria-current={i === index}
           >
-            <img src={thumbUrl(tile.id, 'sm')} alt="" loading="lazy" draggable={false} />
+            <img src={thumbUrl(tile, 'sm')} alt="" loading="lazy" draggable={false} />
           </button>
         );
       })}

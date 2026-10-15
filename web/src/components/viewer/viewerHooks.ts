@@ -40,7 +40,7 @@ export function useViewerKeyboard(
 export function usePreloadNeighbours(tiles: ImageTile[], index: number) {
   useEffect(() => {
     for (const neighbour of [tiles[index - 1], tiles[index + 1]]) {
-      if (neighbour) new Image().src = thumbUrl(neighbour.id, 'lg');
+      if (neighbour) new Image().src = thumbUrl(neighbour, 'lg');
     }
   }, [index, tiles]);
 }

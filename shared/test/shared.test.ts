@@ -13,17 +13,55 @@ import {
   ratingLevel,
   strongestRating,
   displayTagName,
+  thumbDimensions,
+  thumbSrcSet,
+  thumbUrl,
   type ImageQuery,
   type ImageTile,
 } from '../src';
 
 describe('tile encoding', () => {
   it.each<ImageTile>([
-    { id: 1, width: 10, height: 20, placeholder: 'abc', rating: 'general' },
-    { id: 2, width: 30, height: 40, placeholder: '', rating: 'explicit' },
-    { id: 3, width: 5, height: 5, placeholder: 'x', rating: null },
+    { id: 1, width: 10, height: 20, placeholder: 'abc', rating: 'general', thumbVersion: 2 },
+    { id: 2, width: 30, height: 40, placeholder: '', rating: 'explicit', thumbVersion: 1 },
+    { id: 3, width: 5, height: 5, placeholder: 'x', rating: null, thumbVersion: 2 },
   ])('round-trips %j', (tile) => {
     expect(decodeTile(encodeTile(tile))).toEqual(tile);
+  });
+
+  it('reads lists saved before thumbnail versions as version 1', () => {
+    expect(decodeTile([4, 10, 10, 'p', -1]).thumbVersion).toBe(1);
+  });
+});
+
+describe('thumbnails', () => {
+  it('scales into each box without enlarging', () => {
+    expect(thumbDimensions(2000, 3000, 'sm')).toEqual({ width: 320, height: 480 });
+    expect(thumbDimensions(2000, 3000, 'md')).toEqual({ width: 480, height: 720 });
+    expect(thumbDimensions(2000, 3000, 'lg')).toEqual({ width: 1365, height: 2048 });
+    expect(thumbDimensions(6000, 1000, 'sm')).toEqual({ width: 1440, height: 240 });
+    expect(thumbDimensions(300, 200, 'lg')).toEqual({ width: 300, height: 200 });
+  });
+
+  it('puts the version in URLs from version 2', () => {
+    expect(thumbUrl({ id: 7 }, 'sm')).toBe('/media/thumb/7/sm');
+    expect(thumbUrl({ id: 7, thumbVersion: 1 }, 'lg')).toBe('/media/thumb/7/lg');
+    expect(thumbUrl({ id: 7, thumbVersion: 2 }, 'md')).toBe('/media/thumb/7/md?v=2');
+  });
+
+  it('offers the sizes the version has, by width', () => {
+    expect(thumbSrcSet({ id: 7, width: 2000, height: 3000, thumbVersion: 2 })).toBe(
+      '/media/thumb/7/sm?v=2 320w, /media/thumb/7/md?v=2 480w, /media/thumb/7/lg?v=2 1365w',
+    );
+    expect(thumbSrcSet({ id: 7, width: 2000, height: 3000, thumbVersion: 1 })).toBe(
+      '/media/thumb/7/sm 320w, /media/thumb/7/lg 1365w',
+    );
+  });
+
+  it('leaves out sizes no wider than a smaller one', () => {
+    expect(thumbSrcSet({ id: 7, width: 600, height: 400, thumbVersion: 2 })).toBe(
+      '/media/thumb/7/sm?v=2 600w',
+    );
   });
 });
 

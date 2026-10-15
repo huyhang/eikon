@@ -101,9 +101,14 @@ already a tag, or an implication that would go round in a circle).
 ## Media (cookie-protected, immutable, long-cached)
 | Path | Content |
 |---|---|
-| `/media/thumb/:id/sm` | WebP, 480 px tall (grid) |
+| `/media/thumb/:id/sm` | WebP, fits 1440×480 (grid) |
+| `/media/thumb/:id/md` | WebP, fits 2048×720 (grid on high-density screens, large covers); thumbnail version 2 and later |
 | `/media/thumb/:id/lg` | WebP, fits 2048×2048 (viewer, tagger input) |
 | `/media/original/:id` | The original file |
+
+Thumbnail URLs carry the image's `thumbVersion` as `?v=` from version 2 on (`thumbUrl`), so rebuilt thumbnails get
+new URLs. When `THUMB_VERSION` changes, the server rebuilds older thumbnails from the originals in the background;
+until then an image keeps its old ones. `thumbSrcSet` lists the sizes an image has, for the browser to pick from.
 
 ## Tagger protocol (Eikon → gpubox)
 See `shared/src/tagger.ts`:

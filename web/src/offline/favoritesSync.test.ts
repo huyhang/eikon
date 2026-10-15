@@ -5,10 +5,9 @@ import { BOOT_URLS, imageUrls, syncFavorites } from './favoritesSync';
 import { OFFLINE_CACHE } from './policy';
 
 const LIST = '/api/images?favorites=1&sort=newest';
-const tile = (id: number) => [id, 100, 100, '', 'general'];
-
 function setup(favorites: number[], broken: string[] = []) {
-  const server = { favorites };
+  const server = { favorites, thumbVersions: {} as Record<number, number> };
+  const tile = (id: number) => [id, 100, 100, '', -1, server.thumbVersions[id] ?? 1];
   const fetch = vi.fn(async (url: string) => {
     if (broken.includes(url)) return new Response('boom', { status: 500 });
     if (url === LIST)
@@ -26,7 +25,9 @@ describe('syncFavorites', () => {
   it('saves the list, the start-up answers, and each favorite’s thumbnails and details', async () => {
     const { sync, saved } = setup([1, 2]);
     expect(await sync()).toEqual({ favorites: 2, saved: 2, failed: 0 });
-    expect(await saved()).toEqual([LIST, ...BOOT_URLS, ...imageUrls(1), ...imageUrls(2)].toSorted());
+    expect(await saved()).toEqual(
+      [LIST, ...BOOT_URLS, ...imageUrls({ id: 1 }), ...imageUrls({ id: 2 })].toSorted(),
+    );
   });
 
   it('fetches only what is missing next time, and drops images no longer favorited', async () => {
@@ -36,9 +37,25 @@ describe('syncFavorites', () => {
     fetch.mockClear();
     await sync();
     expect(fetch.mock.calls.map(([url]) => url).toSorted()).toEqual(
-      [LIST, ...BOOT_URLS, ...imageUrls(3)].toSorted(),
+      [LIST, ...BOOT_URLS, ...imageUrls({ id: 3 })].toSorted(),
     );
-    expect(await saved()).toEqual([LIST, ...BOOT_URLS, ...imageUrls(2), ...imageUrls(3)].toSorted());
+    expect(await saved()).toEqual(
+      [LIST, ...BOOT_URLS, ...imageUrls({ id: 2 }), ...imageUrls({ id: 3 })].toSorted(),
+    );
+  });
+
+  it('saves a favorite again once its thumbnails are rebuilt, dropping the old ones', async () => {
+    const { server, fetch, sync, saved } = setup([1, 2]);
+    await sync();
+    server.thumbVersions[2] = 2;
+    fetch.mockClear();
+    await sync();
+    expect(fetch.mock.calls.map(([url]) => url).toSorted()).toEqual(
+      [LIST, ...BOOT_URLS, '/media/thumb/2/sm?v=2', '/media/thumb/2/lg?v=2'].toSorted(),
+    );
+    expect(await saved()).toEqual(
+      [LIST, ...BOOT_URLS, ...imageUrls({ id: 1 }), ...imageUrls({ id: 2, thumbVersion: 2 })].toSorted(),
+    );
   });
 
   it.each([
@@ -53,14 +70,14 @@ describe('syncFavorites', () => {
       );
     }
     expect(await sync()).toEqual({ favorites: 2, saved: 1, failed: 1 });
-    expect(await saved()).toEqual(expect.arrayContaining(imageUrls(1)));
+    expect(await saved()).toEqual(expect.arrayContaining(imageUrls({ id: 1 })));
   });
 
   it('reports progress up to the total', async () => {
     const { sync } = setup([1, 2]);
     const progress: { done: number; total: number }[] = [];
     await sync((p) => progress.push(p));
-    const total = BOOT_URLS.length + 2 * imageUrls(1).length;
+    const total = BOOT_URLS.length + 2 * imageUrls({ id: 1 }).length;
     expect(progress[0]).toEqual({ done: 0, total });
     expect(progress.at(-1)).toEqual({ done: total, total });
   });

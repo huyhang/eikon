@@ -1,4 +1,12 @@
-import { API_CACHE, API_CACHE_LIMIT, INDEX_KEY, OFFLINE_CACHE, routeFor, SHELL_CACHE_PREFIX } from './policy';
+import {
+  API_CACHE,
+  API_CACHE_LIMIT,
+  INDEX_KEY,
+  OFFLINE_CACHE,
+  otherThumbSizes,
+  routeFor,
+  SHELL_CACHE_PREFIX,
+} from './policy';
 
 type Fetch = (input: Request | string, init?: RequestInit) => Promise<Response>;
 
@@ -100,8 +108,23 @@ export function createServiceWorkerHandlers({
     );
   }
 
+  /**
+   * Saved thumbnails first. Offline, the grid may ask for a size that wasn't saved (it picks by drawn
+   * size); any saved size of the same image beats a broken one.
+   */
   async function thumb(request: Request): Promise<Response> {
-    return (await (await caches.open(OFFLINE_CACHE)).match(request)) ?? fetch(request);
+    const offline = await caches.open(OFFLINE_CACHE);
+    const saved = await offline.match(request);
+    if (saved) return saved;
+    try {
+      return await fetch(request);
+    } catch (error) {
+      for (const url of otherThumbSizes(request.url)) {
+        const copy = await offline.match(url);
+        if (copy) return copy;
+      }
+      throw error;
+    }
   }
 
   /** The answer to a fetch event, or null to let the browser handle it as usual. */
